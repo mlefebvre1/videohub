@@ -1,5 +1,3 @@
-use std::default;
-
 use crate::protocol;
 
 struct Deserializer {}
@@ -50,23 +48,55 @@ impl Deserializer {
         Ok(device_info)
     }
 
-    pub fn deserialize_labels(
+    pub fn deserialize_to_vec_str(
+        &self,
+        block: &str,
+        expected_size: usize,
+    ) -> Result<Vec<String>, protocol::error::Error> {
+        let mut labels = Vec::new();
+        labels.reserve_exact(expected_size);
+        labels.resize(expected_size, "".to_string());
+
+        for line in block.lines() {
+            let mut line_as_iter = line.chars();
+
+            let label_id = line_as_iter
+                .by_ref()
+                .take_while(|c| !c.is_ascii_whitespace())
+                .collect::<String>()
+                .parse::<usize>()
+                .map_err(protocol::error::Error::ParseInt)?;
+
+            let label_value: String = line_as_iter.collect();
+
+            if label_id < expected_size {
+                labels[label_id] = label_value.trim().to_string();
+            } else {
+                return Err(protocol::error::Error::LabelsLengthError);
+            }
+        }
+        Ok(labels)
+    }
+
+    fn deserialize_labels(
         &self,
         block: &str,
         expected_size: usize,
     ) -> Result<Vec<protocol::Label>, protocol::error::Error> {
-        let mut labels = Vec::with_capacity(expected_size);
-        for line in block.lines() {
-            let label_str: String = line
-                .chars()
-                .skip_while(|c| !c.is_ascii_whitespace())
-                .collect();
-            labels.push(label_str.trim().to_string())
-        }
-        if labels.len() != expected_size {
-            return Err(protocol::error::Error::LabelsLengthError);
-        }
-        Ok(labels)
+        self.deserialize_to_vec_str(block, expected_size)
+    }
+
+    fn deserialize_output_locks(
+        &self,
+        block: &str,
+        expected_size: usize,
+    ) -> Result<protocol::OutputLocks, protocol::error::Error> {
+        let v = self.deserialize_to_vec_str(block, expected_size)?;
+        let output_locks: Result<protocol::OutputLocks, protocol::error::Error> = v
+            .iter()
+            .map(|item| protocol::LockStatus::from_str(&item))
+            .collect();
+        Ok(output_locks?)
     }
 
     fn get_info_from_line_raw(&self, line: &str) -> Result<String, protocol::error::Error> {
@@ -204,5 +234,96 @@ fn test_deserialize_labels() {
 
     let de = Deserializer {};
     let input_labels = de.deserialize_labels(block, 40).unwrap();
+    assert!(input_labels == expected);
+}
+
+#[test]
+fn test_deserialize_output_locks() {
+    let block = "\
+        0 U\n\
+        1 U\n\
+        2 U\n\
+        3 U\n\
+        4 U\n\
+        5 U\n\
+        6 U\n\
+        7 U\n\
+        8 U\n\
+        9 U\n\
+        10 U\n\
+        11 F\n\
+        12 U\n\
+        13 U\n\
+        14 O\n\
+        15 U\n\
+        16 O\n\
+        17 U\n\
+        18 U\n\
+        19 U\n\
+        20 U\n\
+        21 F\n\
+        22 U\n\
+        23 U\n\
+        24 U\n\
+        25 U\n\
+        26 U\n\
+        27 U\n\
+        28 U\n\
+        29 U\n\
+        30 U\n\
+        31 U\n\
+        32 U\n\
+        33 U\n\
+        34 U\n\
+        35 U\n\
+        36 O\n\
+        37 O\n\
+        38 O\n\
+        39 O\n\
+        ";
+    let expected = vec![
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::ForceUnlock,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Locked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Locked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::ForceUnlock,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Unlocked,
+        protocol::LockStatus::Locked,
+        protocol::LockStatus::Locked,
+        protocol::LockStatus::Locked,
+        protocol::LockStatus::Locked,
+    ];
+    let de = Deserializer {};
+    let input_labels = de.deserialize_output_locks(block, 40).unwrap();
     assert!(input_labels == expected);
 }

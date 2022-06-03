@@ -8,6 +8,7 @@ pub enum Error {
     Message(String),
     DevicePresentError,
     DeviceInfoError,
+    LockStatusError,
     ParseInt(std::num::ParseIntError),
     ParseValueError,
     LabelsLengthError,

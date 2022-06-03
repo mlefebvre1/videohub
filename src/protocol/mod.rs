@@ -61,11 +61,22 @@ enum IOLabel {
     Output(OutputLabel),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LockStatus {
-    Owned,
+    ForceUnlock,
     Locked,
     Unlocked,
+}
+
+impl LockStatus {
+    pub fn from_str(s: &str) -> Result<Self, error::Error> {
+        match s {
+            "O" => Ok(LockStatus::Locked),
+            "U" => Ok(LockStatus::Unlocked),
+            "F" => Ok(LockStatus::ForceUnlock),
+            _ => Err(error::Error::LockStatusError),
+        }
+    }
 }
 
 impl Default for LockStatus {
