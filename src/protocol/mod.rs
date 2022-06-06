@@ -8,7 +8,7 @@ mod de;
 mod error;
 mod ser;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct ProtocolPreamble {
     version: String,
 }
@@ -87,19 +87,19 @@ impl Default for LockStatus {
 
 type OutputLocks = Vec<LockStatus>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Route {
     source: usize,
     destination: usize,
 }
 type OutputRoutings = Vec<Route>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Configuration {
     take_mode: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct HubInfo {
     protocol_preamble: ProtocolPreamble,
     device_info: DeviceInfo,

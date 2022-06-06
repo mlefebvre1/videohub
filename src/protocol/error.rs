@@ -10,8 +10,9 @@ pub enum Error {
     DeviceInfoError,
     LockStatusError,
     ParseInt(std::num::ParseIntError),
+    ParseBool(std::str::ParseBoolError),
+    IndexError,
     ParseValueError,
-    LabelsLengthError,
 }
 
 impl ser::Error for Error {

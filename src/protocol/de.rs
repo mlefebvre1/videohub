@@ -3,44 +3,52 @@ use crate::protocol;
 struct Deserializer {}
 
 impl Deserializer {
-    pub fn deserialize_device_info(
-        &self,
+    pub fn deserialize(&self, dump: &str) {}
+
+    fn deserialize_device_info(
         block: &str,
     ) -> Result<protocol::DeviceInfo, protocol::error::Error> {
         // Parse and extract info for the block VIDEOHUB DEVICE
         // It is expected that VIDEOHUB DEVICE: label is removed
         let mut device_info: protocol::DeviceInfo = Default::default();
         for line in block.lines() {
-            match line {
-                line if line.starts_with("Device present:") => {
-                    device_info.device_present =
-                        protocol::DevicePresent::from_str(&self.get_info_from_line_raw(line)?)?
+            match Self::get_key_and_value_from_line(line)? {
+                (key, value) if &key == "Device present" => {
+                    device_info.device_present = protocol::DevicePresent::from_str(&value)?
                 }
-                line if line.starts_with("Model name:") => {
-                    device_info.model_name = self.get_info_from_line_raw(line)?
+                (key, value) if &key == "Model name" => {
+                    device_info.model_name = value;
                 }
-                line if line.starts_with("Friendly name:") => {
-                    device_info.friendly_name = self.get_info_from_line_raw(line)?
+                (key, value) if &key == "Friendly name" => {
+                    device_info.friendly_name = value;
                 }
-                line if line.starts_with("Unique ID:") => {
-                    device_info.unique_id = self.get_info_from_line_raw(line)?
+                (key, value) if &key == "Unique ID" => {
+                    device_info.unique_id = value;
                 }
-                line if line.starts_with("Video inputs:") => {
-                    device_info.nb_video_inputs = self.get_info_from_line_as_usize(line)?
+                (key, value) if &key == "Video inputs" => {
+                    device_info.nb_video_inputs = value
+                        .parse::<usize>()
+                        .map_err(protocol::error::Error::ParseInt)?;
                 }
-                line if line.starts_with("Video processing units:") => {
-                    device_info.nb_video_processing_units =
-                        self.get_info_from_line_as_usize(line)?
+                (key, value) if &key == "Video processing units" => {
+                    device_info.nb_video_processing_units = value
+                        .parse::<usize>()
+                        .map_err(protocol::error::Error::ParseInt)?;
                 }
-                line if line.starts_with("Video outputs:") => {
-                    device_info.nb_video_outputs = self.get_info_from_line_as_usize(line)?
+                (key, value) if &key == "Video outputs" => {
+                    device_info.nb_video_outputs = value
+                        .parse::<usize>()
+                        .map_err(protocol::error::Error::ParseInt)?;
                 }
-                line if line.starts_with("Video monitoring outputs:") => {
-                    device_info.nb_video_monitoring_outputs =
-                        self.get_info_from_line_as_usize(line)?
+                (key, value) if &key == "Video monitoring outputs" => {
+                    device_info.nb_video_monitoring_outputs = value
+                        .parse::<usize>()
+                        .map_err(protocol::error::Error::ParseInt)?;
                 }
-                line if line.starts_with("Serial ports:") => {
-                    device_info.nb_serial_ports = self.get_info_from_line_as_usize(line)?
+                (key, value) if &key == "Serial ports" => {
+                    device_info.nb_serial_ports = value
+                        .parse::<usize>()
+                        .map_err(protocol::error::Error::ParseInt)?;
                 }
                 _ => (),
             }
@@ -48,69 +56,101 @@ impl Deserializer {
         Ok(device_info)
     }
 
-    pub fn deserialize_to_vec_str(
-        &self,
-        block: &str,
-        expected_size: usize,
-    ) -> Result<Vec<String>, protocol::error::Error> {
-        let mut labels = Vec::new();
-        labels.reserve_exact(expected_size);
-        labels.resize(expected_size, "".to_string());
-
-        for line in block.lines() {
-            let mut line_as_iter = line.chars();
-
-            let label_id = line_as_iter
-                .by_ref()
-                .take_while(|c| !c.is_ascii_whitespace())
-                .collect::<String>()
-                .parse::<usize>()
-                .map_err(protocol::error::Error::ParseInt)?;
-
-            let label_value: String = line_as_iter.collect();
-
-            if label_id < expected_size {
-                labels[label_id] = label_value.trim().to_string();
-            } else {
-                return Err(protocol::error::Error::LabelsLengthError);
-            }
-        }
-        Ok(labels)
-    }
-
     fn deserialize_labels(
-        &self,
         block: &str,
         expected_size: usize,
     ) -> Result<Vec<protocol::Label>, protocol::error::Error> {
-        self.deserialize_to_vec_str(block, expected_size)
+        Self::deserialize_seq(block, expected_size)
     }
 
     fn deserialize_output_locks(
-        &self,
         block: &str,
         expected_size: usize,
     ) -> Result<protocol::OutputLocks, protocol::error::Error> {
-        let v = self.deserialize_to_vec_str(block, expected_size)?;
-        let output_locks: Result<protocol::OutputLocks, protocol::error::Error> = v
+        let seq = Self::deserialize_seq(block, expected_size)?;
+        let output_locks: Result<protocol::OutputLocks, protocol::error::Error> = seq
             .iter()
             .map(|item| protocol::LockStatus::from_str(&item))
             .collect();
         Ok(output_locks?)
     }
 
-    fn get_info_from_line_raw(&self, line: &str) -> Result<String, protocol::error::Error> {
-        if let Some(value) = line.split(":").nth(1) {
-            Ok(value.trim().to_string())
+    fn deserialize_output_routing(
+        block: &str,
+        expected_size: usize,
+    ) -> Result<protocol::OutputRoutings, protocol::error::Error> {
+        let seq = Self::deserialize_seq(block, expected_size)?;
+        let output_routing: protocol::OutputRoutings = seq
+            .iter()
+            .map(|item| item.parse::<usize>().unwrap())
+            .enumerate()
+            .map(|(input, output)| protocol::Route {
+                source: input,
+                destination: output,
+            })
+            .collect();
+        Ok(output_routing)
+    }
+
+    fn deserialize_configuration(
+        block: &str,
+    ) -> Result<protocol::Configuration, protocol::error::Error> {
+        let mut configuration = protocol::Configuration { take_mode: false };
+        for line in block.lines() {
+            match Self::get_key_and_value_from_line(line)? {
+                (key, value) if &key == "Take Mode" => {
+                    configuration.take_mode = value
+                        .parse::<bool>()
+                        .map_err(protocol::error::Error::ParseBool)?
+                }
+                _ => (),
+            }
+        }
+        Ok(configuration)
+    }
+
+    fn deserialize_seq(
+        block: &str,
+        expected_size: usize,
+    ) -> Result<Vec<String>, protocol::error::Error> {
+        let mut seq = Vec::with_capacity(expected_size);
+
+        seq.resize(expected_size, "".to_string());
+        for line in block.lines() {
+            let (index, value) = Self::get_index_and_value_from_line(line)?;
+            if index < expected_size {
+                seq[index] = value.trim().to_string();
+            } else {
+                return Err(protocol::error::Error::IndexError);
+            }
+        }
+        Ok(seq)
+    }
+
+    fn get_key_and_value_from_line(line: &str) -> Result<(String, String), protocol::error::Error> {
+        let mut item = line.split(":");
+        let key = item.next();
+        let value = item.next();
+        if let (Some(key), Some(value)) = (key, value) {
+            // if let (Some(key), Some(value)) = (item.next(), item.next()) {
+            Ok((key.to_string(), value.trim().to_string()))
         } else {
             Err(protocol::error::Error::ParseValueError)
         }
     }
 
-    fn get_info_from_line_as_usize(&self, line: &str) -> Result<usize, protocol::error::Error> {
-        self.get_info_from_line_raw(line)?
+    fn get_index_and_value_from_line(
+        line: &str,
+    ) -> Result<(usize, String), protocol::error::Error> {
+        let mut chars = line.chars();
+        let index = chars
+            .by_ref()
+            .take_while(|c| !c.is_ascii_whitespace())
+            .collect::<String>()
             .parse::<usize>()
-            .map_err(protocol::error::Error::ParseInt)
+            .map_err(protocol::error::Error::ParseInt)?;
+        let value: String = chars.collect();
+        Ok((index, value))
     }
 }
 
@@ -139,8 +179,7 @@ fn test_deserialize_device_info() {
         nb_serial_ports: 0,
     };
 
-    let de = Deserializer {};
-    let device_info = de.deserialize_device_info(block).unwrap();
+    let device_info = Deserializer::deserialize_device_info(block).unwrap();
 
     assert!(device_info == expected)
 }
@@ -232,8 +271,7 @@ fn test_deserialize_labels() {
         "BNC Patch RD1-B - 16".to_string(),
     ];
 
-    let de = Deserializer {};
-    let input_labels = de.deserialize_labels(block, 40).unwrap();
+    let input_labels = Deserializer::deserialize_labels(block, 40).unwrap();
     assert!(input_labels == expected);
 }
 
@@ -323,7 +361,227 @@ fn test_deserialize_output_locks() {
         protocol::LockStatus::Locked,
         protocol::LockStatus::Locked,
     ];
-    let de = Deserializer {};
-    let input_labels = de.deserialize_output_locks(block, 40).unwrap();
+    let input_labels = Deserializer::deserialize_output_locks(block, 40).unwrap();
     assert!(input_labels == expected);
+}
+
+#[test]
+fn test_deserialize_output_routing() {
+    let block = "\
+                        0 39\n\
+                        1 1\n\
+                        2 2\n\
+                        3 6\n\
+                        4 4\n\
+                        5 5\n\
+                        6 6\n\
+                        7 7\n\
+                        8 14\n\
+                        9 9\n\
+                        10 32\n\
+                        11 11\n\
+                        12 34\n\
+                        13 14\n\
+                        14 0\n\
+                        15 14\n\
+                        16 1\n\
+                        17 1\n\
+                        18 1\n\
+                        19 31\n\
+                        20 31\n\
+                        21 0\n\
+                        22 35\n\
+                        23 33\n\
+                        24 0\n\
+                        25 31\n\
+                        26 0\n\
+                        27 32\n\
+                        28 32\n\
+                        29 32\n\
+                        30 0\n\
+                        31 1\n\
+                        32 32\n\
+                        33 33\n\
+                        34 34\n\
+                        35 31\n\
+                        36 36\n\
+                        37 37\n\
+                        38 38\n\
+                        39 32\n\
+                        ";
+    let expected = vec![
+        protocol::Route {
+            source: 0,
+            destination: 39,
+        },
+        protocol::Route {
+            source: 1,
+            destination: 1,
+        },
+        protocol::Route {
+            source: 2,
+            destination: 2,
+        },
+        protocol::Route {
+            source: 3,
+            destination: 6,
+        },
+        protocol::Route {
+            source: 4,
+            destination: 4,
+        },
+        protocol::Route {
+            source: 5,
+            destination: 5,
+        },
+        protocol::Route {
+            source: 6,
+            destination: 6,
+        },
+        protocol::Route {
+            source: 7,
+            destination: 7,
+        },
+        protocol::Route {
+            source: 8,
+            destination: 14,
+        },
+        protocol::Route {
+            source: 9,
+            destination: 9,
+        },
+        protocol::Route {
+            source: 10,
+            destination: 32,
+        },
+        protocol::Route {
+            source: 11,
+            destination: 11,
+        },
+        protocol::Route {
+            source: 12,
+            destination: 34,
+        },
+        protocol::Route {
+            source: 13,
+            destination: 14,
+        },
+        protocol::Route {
+            source: 14,
+            destination: 0,
+        },
+        protocol::Route {
+            source: 15,
+            destination: 14,
+        },
+        protocol::Route {
+            source: 16,
+            destination: 1,
+        },
+        protocol::Route {
+            source: 17,
+            destination: 1,
+        },
+        protocol::Route {
+            source: 18,
+            destination: 1,
+        },
+        protocol::Route {
+            source: 19,
+            destination: 31,
+        },
+        protocol::Route {
+            source: 20,
+            destination: 31,
+        },
+        protocol::Route {
+            source: 21,
+            destination: 0,
+        },
+        protocol::Route {
+            source: 22,
+            destination: 35,
+        },
+        protocol::Route {
+            source: 23,
+            destination: 33,
+        },
+        protocol::Route {
+            source: 24,
+            destination: 0,
+        },
+        protocol::Route {
+            source: 25,
+            destination: 31,
+        },
+        protocol::Route {
+            source: 26,
+            destination: 0,
+        },
+        protocol::Route {
+            source: 27,
+            destination: 32,
+        },
+        protocol::Route {
+            source: 28,
+            destination: 32,
+        },
+        protocol::Route {
+            source: 29,
+            destination: 32,
+        },
+        protocol::Route {
+            source: 30,
+            destination: 0,
+        },
+        protocol::Route {
+            source: 31,
+            destination: 1,
+        },
+        protocol::Route {
+            source: 32,
+            destination: 32,
+        },
+        protocol::Route {
+            source: 33,
+            destination: 33,
+        },
+        protocol::Route {
+            source: 34,
+            destination: 34,
+        },
+        protocol::Route {
+            source: 35,
+            destination: 31,
+        },
+        protocol::Route {
+            source: 36,
+            destination: 36,
+        },
+        protocol::Route {
+            source: 37,
+            destination: 37,
+        },
+        protocol::Route {
+            source: 38,
+            destination: 38,
+        },
+        protocol::Route {
+            source: 39,
+            destination: 32,
+        },
+    ];
+    let actual = Deserializer::deserialize_output_routing(block, 40).unwrap();
+    assert!(actual == expected);
+}
+
+#[test]
+fn test_deserialize_configuration() {
+    let block = "\
+        Take Mode: true\n\
+        ";
+    let expected = protocol::Configuration { take_mode: true };
+
+    let acutal = Deserializer::deserialize_configuration(block).unwrap();
+    assert!(acutal == expected);
 }
