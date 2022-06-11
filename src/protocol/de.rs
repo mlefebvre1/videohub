@@ -1,9 +1,109 @@
 use crate::protocol;
 
-struct Deserializer {}
+use super::HubInfo;
+
+#[derive(Default, Debug, Clone)]
+pub struct Deserializer {
+    hub_infos: HubInfo,
+}
 
 impl Deserializer {
-    pub fn deserialize(&self, dump: &str) {}
+    pub fn new() -> Self {
+        Self {
+            hub_infos: Default::default(),
+        }
+    }
+    pub fn deserialize(&mut self, s: &str) -> Result<HubInfo, protocol::error::Error> {
+        let mut lines = s.lines();
+        loop {
+            //Loop until we can't find any block
+            if let Some(block_type) = lines.find_map(|line| Self::get_block_type(line)) {
+                let block = lines
+                    .by_ref()
+                    .take_while(|&line| !line.is_empty())
+                    .collect::<Vec<&str>>()
+                    .join("\n");
+                self.deserialize_block(block_type, &block)?;
+            } else {
+                return Ok(self.hub_infos.clone());
+            }
+        }
+    }
+
+    fn deserialize_block(
+        &mut self,
+        block_type: protocol::BlockType,
+        block: &str,
+    ) -> Result<(), protocol::error::Error> {
+        match block_type {
+            protocol::BlockType::ProtocolPreamble => {
+                self.hub_infos.protocol_preamble = Self::deserialize_protocol_preamble(block)?
+            }
+            protocol::BlockType::DeviceInfo => {
+                self.hub_infos.device_info = Self::deserialize_device_info(block)?
+            }
+            protocol::BlockType::InputLabel => {
+                self.hub_infos.input_labels =
+                    Self::deserialize_labels(block, self.hub_infos.device_info.nb_video_inputs)?
+            }
+            protocol::BlockType::OutputLabel => {
+                self.hub_infos.output_labels =
+                    Self::deserialize_labels(block, self.hub_infos.device_info.nb_video_outputs)?
+            }
+            protocol::BlockType::VideoOutputLocks => {
+                self.hub_infos.video_output_locks = Self::deserialize_output_locks(
+                    block,
+                    self.hub_infos.device_info.nb_video_outputs,
+                )?
+            }
+            protocol::BlockType::VideoOutputRouting => {
+                self.hub_infos.video_output_routing = Self::deserialize_output_routing(
+                    block,
+                    self.hub_infos.device_info.nb_video_outputs,
+                )?
+            }
+            protocol::BlockType::Configuration => {
+                self.hub_infos.configuration = Self::deserialize_configuration(block)?
+            }
+            protocol::BlockType::EndPrelude => (),
+        }
+        Ok(())
+    }
+
+    fn get_block_type(line: &str) -> Option<protocol::BlockType> {
+        match line {
+            line if line.starts_with("PROTOCOL PREAMBLE:") => {
+                Some(protocol::BlockType::ProtocolPreamble)
+            }
+            line if line.starts_with("VIDEOHUB DEVICE:") => Some(protocol::BlockType::DeviceInfo),
+            line if line.starts_with("INPUT LABELS:") => Some(protocol::BlockType::InputLabel),
+            line if line.starts_with("OUTPUT LABELS:") => Some(protocol::BlockType::OutputLabel),
+            line if line.starts_with("VIDEO OUTPUT LOCKS:") => {
+                Some(protocol::BlockType::VideoOutputLocks)
+            }
+            line if line.starts_with("VIDEO OUTPUT ROUTING:") => {
+                Some(protocol::BlockType::VideoOutputRouting)
+            }
+            line if line.starts_with("CONFIGURATION:") => Some(protocol::BlockType::Configuration),
+            line if line.starts_with("END PRELUDE:") => Some(protocol::BlockType::EndPrelude),
+            _ => None,
+        }
+    }
+
+    fn deserialize_protocol_preamble(
+        block: &str,
+    ) -> Result<protocol::ProtocolPreamble, protocol::error::Error> {
+        let mut protocol_preamble: protocol::ProtocolPreamble = Default::default();
+        for line in block.lines() {
+            match Self::get_key_and_value_from_line(line)? {
+                (key, value) if &key == "Version" => {
+                    protocol_preamble.version = value;
+                }
+                _ => (),
+            }
+        }
+        Ok(protocol_preamble)
+    }
 
     fn deserialize_device_info(
         block: &str,

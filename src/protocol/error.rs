@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     Message(String),
-    DevicePresentError,
+    DevicePresent,
     DeviceInfoError,
     LockStatusError,
     ParseInt(std::num::ParseIntError),

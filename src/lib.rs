@@ -4,6 +4,8 @@ mod protocol;
 
 use std::{io::Read, net::TcpStream};
 
+use protocol::HubInfo;
+
 pub type HubError = Box<dyn std::error::Error>;
 pub type HubResult<T> = Result<T, HubError>;
 
@@ -33,9 +35,9 @@ impl Hub {
         Ok(content)
     }
 
-    pub fn split_hub_info_in_blocks(utf8_dump: &str) -> Result<Vec<String>, HubError> {
-        let blocks = Vec::new();
-        for line in utf8_dump.lines() {}
-        Ok(blocks)
+    pub fn get_hub_info(&self, content: &str) -> Result<HubInfo, HubError> {
+        let mut de = protocol::de::Deserializer::new();
+        let hub_info = de.deserialize(content)?;
+        Ok(hub_info)
     }
 }

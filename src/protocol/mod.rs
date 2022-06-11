@@ -4,17 +4,17 @@
 /// The device sends information in blocks. Each block is separated by a blank line and starts with an identifier in ALL_CAP.
 /// See the document for more information
 ///
-mod de;
+pub mod de;
 mod error;
-mod ser;
+pub mod ser;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct ProtocolPreamble {
-    version: String,
+    pub version: String,
 }
 
-#[derive(Debug, PartialEq)]
-enum DevicePresent {
+#[derive(Debug, PartialEq, Clone)]
+pub enum DevicePresent {
     Present,
     NotPresent,
     NeedUpdate,
@@ -26,7 +26,7 @@ impl DevicePresent {
             "true" => Ok(DevicePresent::Present),
             "false" => Ok(DevicePresent::NotPresent),
             "needs_update" => Ok(DevicePresent::NeedUpdate),
-            _ => Err(error::Error::DevicePresentError),
+            _ => Err(error::Error::DevicePresent),
         }
     }
 }
@@ -37,17 +37,17 @@ impl Default for DevicePresent {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct DeviceInfo {
-    device_present: DevicePresent,
-    model_name: String,
-    friendly_name: String,
-    unique_id: String,
-    nb_video_inputs: usize,
-    nb_video_processing_units: usize,
-    nb_video_outputs: usize,
-    nb_video_monitoring_outputs: usize,
-    nb_serial_ports: usize,
+    pub device_present: DevicePresent,
+    pub model_name: String,
+    pub friendly_name: String,
+    pub unique_id: String,
+    pub nb_video_inputs: usize,
+    pub nb_video_processing_units: usize,
+    pub nb_video_outputs: usize,
+    pub nb_video_monitoring_outputs: usize,
+    pub nb_serial_ports: usize,
 }
 
 type Label = String;
@@ -61,7 +61,7 @@ enum IOLabel {
     Output(OutputLabel),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LockStatus {
     ForceUnlock,
     Locked,
@@ -87,27 +87,27 @@ impl Default for LockStatus {
 
 type OutputLocks = Vec<LockStatus>;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct Route {
-    source: usize,
-    destination: usize,
+    pub source: usize,
+    pub destination: usize,
 }
 type OutputRoutings = Vec<Route>;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct Configuration {
-    take_mode: bool,
+    pub take_mode: bool,
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct HubInfo {
-    protocol_preamble: ProtocolPreamble,
-    device_info: DeviceInfo,
-    input_labels: InputLabel,
-    output_labels: OutputLabel,
-    video_output_locks: OutputLocks,
-    video_output_routing: OutputRoutings,
-    configuration: Configuration,
+    pub protocol_preamble: ProtocolPreamble,
+    pub device_info: DeviceInfo,
+    pub input_labels: InputLabel,
+    pub output_labels: OutputLabel,
+    pub video_output_locks: OutputLocks,
+    pub video_output_routing: OutputRoutings,
+    pub configuration: Configuration,
 }
 
 #[derive(Debug, Clone, Copy)]
