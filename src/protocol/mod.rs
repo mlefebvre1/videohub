@@ -8,12 +8,14 @@ pub mod de;
 mod error;
 pub mod ser;
 
-#[derive(Debug, Default, PartialEq, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ProtocolPreamble {
     pub version: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum DevicePresent {
     Present,
     NotPresent,
@@ -37,7 +39,7 @@ impl Default for DevicePresent {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub device_present: DevicePresent,
     pub model_name: String,
@@ -50,18 +52,18 @@ pub struct DeviceInfo {
     pub nb_serial_ports: usize,
 }
 
-type Label = String;
+pub type Label = String;
 
-type InputLabel = Vec<Label>;
+pub type InputLabel = Vec<Label>;
 
-type OutputLabel = Vec<Label>;
+pub type OutputLabel = Vec<Label>;
 
-enum IOLabel {
+pub enum IOLabel {
     Input(InputLabel),
     Output(OutputLabel),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum LockStatus {
     ForceUnlock,
     Locked,
@@ -85,21 +87,21 @@ impl Default for LockStatus {
     }
 }
 
-type OutputLocks = Vec<LockStatus>;
+pub type OutputLocks = Vec<LockStatus>;
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Route {
     pub source: usize,
     pub destination: usize,
 }
-type OutputRoutings = Vec<Route>;
+pub type OutputRoutings = Vec<Route>;
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     pub take_mode: bool,
 }
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 pub struct HubInfo {
     pub protocol_preamble: ProtocolPreamble,
     pub device_info: DeviceInfo,
