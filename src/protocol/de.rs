@@ -184,7 +184,7 @@ impl Deserializer {
             .iter()
             .map(|item| item.parse::<usize>().unwrap())
             .enumerate()
-            .map(|(input, output)| protocol::Route {
+            .map(|(output, input)| protocol::Route {
                 source: input,
                 destination: output,
             })

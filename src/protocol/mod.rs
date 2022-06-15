@@ -8,6 +8,8 @@ pub mod de;
 mod error;
 pub mod ser;
 
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
@@ -68,6 +70,21 @@ pub enum LockStatus {
     ForceUnlock,
     Locked,
     Unlocked,
+}
+
+impl Display for LockStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            LockStatus::Locked => "Locked",
+            LockStatus::Unlocked => "Unlocked",
+            LockStatus::ForceUnlock => "ForceUnlock",
+        };
+        if let Some(width) = f.width() {
+            write!(f, "{s:width$}")
+        } else {
+            write!(f, "{s}")
+        }
+    }
 }
 
 impl LockStatus {

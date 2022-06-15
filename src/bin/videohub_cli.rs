@@ -1,7 +1,7 @@
 mod display;
 use std::net::Ipv4Addr;
 
-use display::format_input_labels;
+use display::{format_input_labels, format_output_labels};
 use tera::{Context, Tera};
 use videohub::Hub;
 
@@ -11,6 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hub_info = videohub.get_hub_info(&content)?;
     let mut tera = Tera::new("**/display/templates/**/*")?;
     tera.register_function("format_input_labels", format_input_labels);
+    tera.register_function("format_output_labels", format_output_labels);
     let s = tera.render(
         "src/bin/display/templates/device_info.j2",
         &Context::from_serialize(hub_info)?,
