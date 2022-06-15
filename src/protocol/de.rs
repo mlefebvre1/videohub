@@ -511,8 +511,8 @@ fn test_deserialize_output_routing() {
                         ";
     let expected = vec![
         protocol::Route {
-            source: 0,
-            destination: 39,
+            source: 39,
+            destination: 0,
         },
         protocol::Route {
             source: 1,
@@ -523,8 +523,8 @@ fn test_deserialize_output_routing() {
             destination: 2,
         },
         protocol::Route {
-            source: 3,
-            destination: 6,
+            source: 6,
+            destination: 3,
         },
         protocol::Route {
             source: 4,
@@ -543,100 +543,100 @@ fn test_deserialize_output_routing() {
             destination: 7,
         },
         protocol::Route {
-            source: 8,
-            destination: 14,
+            source: 14,
+            destination: 8,
         },
         protocol::Route {
             source: 9,
             destination: 9,
         },
         protocol::Route {
-            source: 10,
-            destination: 32,
+            source: 32,
+            destination: 10,
         },
         protocol::Route {
             source: 11,
             destination: 11,
         },
         protocol::Route {
-            source: 12,
-            destination: 34,
+            source: 34,
+            destination: 12,
         },
         protocol::Route {
-            source: 13,
+            source: 14,
+            destination: 13,
+        },
+        protocol::Route {
+            source: 0,
             destination: 14,
         },
         protocol::Route {
             source: 14,
-            destination: 0,
+            destination: 15,
         },
         protocol::Route {
-            source: 15,
-            destination: 14,
+            source: 1,
+            destination: 16,
         },
         protocol::Route {
-            source: 16,
-            destination: 1,
+            source: 1,
+            destination: 17,
         },
         protocol::Route {
-            source: 17,
-            destination: 1,
-        },
-        protocol::Route {
-            source: 18,
-            destination: 1,
-        },
-        protocol::Route {
-            source: 19,
-            destination: 31,
-        },
-        protocol::Route {
-            source: 20,
-            destination: 31,
-        },
-        protocol::Route {
-            source: 21,
-            destination: 0,
-        },
-        protocol::Route {
-            source: 22,
-            destination: 35,
-        },
-        protocol::Route {
-            source: 23,
-            destination: 33,
-        },
-        protocol::Route {
-            source: 24,
-            destination: 0,
-        },
-        protocol::Route {
-            source: 25,
-            destination: 31,
-        },
-        protocol::Route {
-            source: 26,
-            destination: 0,
-        },
-        protocol::Route {
-            source: 27,
-            destination: 32,
-        },
-        protocol::Route {
-            source: 28,
-            destination: 32,
-        },
-        protocol::Route {
-            source: 29,
-            destination: 32,
-        },
-        protocol::Route {
-            source: 30,
-            destination: 0,
+            source: 1,
+            destination: 18,
         },
         protocol::Route {
             source: 31,
-            destination: 1,
+            destination: 19,
+        },
+        protocol::Route {
+            source: 31,
+            destination: 20,
+        },
+        protocol::Route {
+            source: 0,
+            destination: 21,
+        },
+        protocol::Route {
+            source: 35,
+            destination: 22,
+        },
+        protocol::Route {
+            source: 33,
+            destination: 23,
+        },
+        protocol::Route {
+            source: 0,
+            destination: 24,
+        },
+        protocol::Route {
+            source: 31,
+            destination: 25,
+        },
+        protocol::Route {
+            source: 0,
+            destination: 26,
+        },
+        protocol::Route {
+            source: 32,
+            destination: 27,
+        },
+        protocol::Route {
+            source: 32,
+            destination: 28,
+        },
+        protocol::Route {
+            source: 32,
+            destination: 29,
+        },
+        protocol::Route {
+            source: 0,
+            destination: 30,
+        },
+        protocol::Route {
+            source: 1,
+            destination: 31,
         },
         protocol::Route {
             source: 32,
@@ -651,8 +651,8 @@ fn test_deserialize_output_routing() {
             destination: 34,
         },
         protocol::Route {
-            source: 35,
-            destination: 31,
+            source: 31,
+            destination: 35,
         },
         protocol::Route {
             source: 36,
@@ -667,8 +667,8 @@ fn test_deserialize_output_routing() {
             destination: 38,
         },
         protocol::Route {
-            source: 39,
-            destination: 32,
+            source: 32,
+            destination: 39,
         },
     ];
     let actual = Deserializer::deserialize_output_routing(block, 40).unwrap();

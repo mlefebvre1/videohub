@@ -21,8 +21,8 @@ pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
         .into_iter()
         .enumerate()
         .map(|(id, label)| format!("|{index:^6}| {label:<78}|", index = id + 1).to_string())
-        .collect::<Vec<String>>();
-    Ok(to_value(formatted_output).unwrap())
+        .collect::<Vec<String>>(); // +1 because indexes are 1 based
+    Ok(to_value(formatted_output)?)
 }
 
 pub fn format_output_labels(args: &HashMap<String, Value>) -> Result<Value> {
@@ -60,15 +60,14 @@ pub fn format_output_labels(args: &HashMap<String, Value>) -> Result<Value> {
             return Err(Error::msg(""));
         }
     };
-    println!("{:?}", video_output_routing);
     let formatted_output = izip!(output_label, video_output_locks, video_output_routing)
         .map(|(output_label, lock_state, route)| {
             format!(
                 "|{dest:^6}| {output_label:<50}| {lock_state:^13}| {src:^11}|",
                 dest = route.destination + 1,
-                src = route.source
-            )
+                src = route.source + 1
+            ) // +1 because indexes are 1 based
         })
         .collect::<Vec<String>>();
-    Ok(to_value(formatted_output).unwrap())
+    Ok(to_value(formatted_output)?)
 }
