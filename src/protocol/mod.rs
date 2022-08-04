@@ -145,3 +145,10 @@ pub enum BlockType {
     Configuration,
     EndPrelude,
 }
+
+pub enum WriteType<'a> {
+    VideoOutputRouting(OutputRoutings),
+    OutputLabel(&'a [(usize, Label)]),
+    InputLabel(&'a [(usize, Label)]),
+    VideoOutputLocks(&'a [(usize, LockStatus)]),
+}

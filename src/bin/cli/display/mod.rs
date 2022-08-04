@@ -10,7 +10,7 @@ pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
         Some(val) => match from_value::<InputLabel>(val.clone()) {
             Ok(v) => v,
             Err(_) => {
-                return Err(Error::msg(format!("")));
+                return Err(Error::msg(String::new()));
             }
         },
         None => {
@@ -20,7 +20,7 @@ pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
     let formatted_output = labels
         .into_iter()
         .enumerate()
-        .map(|(id, label)| format!("|{index:^8}| {label:<78}|", index = id + 1).to_string())
+        .map(|(id, label)| format!("|{index:^8}| {label:<78}|", index = id + 1))
         .collect::<Vec<String>>(); // +1 because indexes are 1 based
     Ok(to_value(formatted_output)?)
 }

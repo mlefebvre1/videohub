@@ -7,13 +7,13 @@ https://www.blackmagicdesign.com/products/smartvideohub
 
 ### How to build
 
-For the CLI.
+#### For the CLI.
 
 ```
 $ cargo build --release --bin cli
 ```
 
-For the WEB Application.
+#### For the WEB Application.
 
 Install WASM Target
 ```
@@ -31,7 +31,3 @@ Build and package using Trunk
 ```
 trunk build --release src/bin/web/index.html
 ```
-
-### How to run
-
-

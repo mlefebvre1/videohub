@@ -4,7 +4,7 @@ pub mod protocol;
 
 use std::{io::Read, net::TcpStream};
 
-use protocol::HubInfo;
+use protocol::{HubInfo, WriteType};
 
 pub type HubError = Box<dyn std::error::Error>;
 pub type HubResult<T> = Result<T, HubError>;
@@ -35,5 +35,21 @@ impl Hub {
         let mut de = protocol::de::Deserializer::new();
         let hub_info = de.deserialize(&content)?;
         Ok(hub_info)
+    }
+
+    pub fn write(&self, data: WriteType) -> Result<(), HubError> {
+        let ser = protocol::ser::Serializer::new();
+
+        match data {
+            WriteType::VideoOutputRouting(output_routes) => {
+                { ser.serialize_video_output_routes(&output_routes) }?
+            }
+            WriteType::OutputLabel(labels) => ser.serialize_output_labels(labels)?,
+            WriteType::InputLabel(labels) => ser.serialize_input_labels(labels)?,
+            WriteType::VideoOutputLocks(output_locks) => {
+                ser.serialize_output_locks(output_locks)?
+            }
+        };
+        Ok(())
     }
 }
