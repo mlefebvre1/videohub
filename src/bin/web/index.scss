@@ -1,0 +1,37 @@
+$white: rgb(255, 255, 255) !default;
+$blue: rgb(27, 77, 203);
+$red: rgb(155, 28, 30) !default;
+$teal: rgb(26, 188, 156) !default;
+
+button {
+    color: $white;
+    background-color: $red;
+    padding: 0.5em 2em;
+    width: 80px;
+    height: 40px;
+    margin-left: 10px;
+    margin-top: 10px;
+
+    border: none;
+    border-radius: 1em;
+
+    transition: 250ms;
+
+    &:active {
+        transform: scale(0.9);
+    }
+}
+
+div {
+    margin-top: 50px;
+}
+
+#input_ports {
+    width: 1000px;
+    height: 300px;
+}
+
+#output_ports {
+    width: 1000px;
+    height: 250px;
+}
