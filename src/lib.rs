@@ -20,7 +20,7 @@ impl Hub {
         Self { socket_addr }
     }
 
-    pub fn dump_hub_info(&self) -> Result<String, HubError> {
+    pub fn read(&self) -> Result<HubInfo, HubError> {
         let mut stream = TcpStream::connect(&self.socket_addr)?;
         let mut buffer = [0; 4096];
         let mut content = "".to_string();
@@ -32,12 +32,8 @@ impl Hub {
                 break;
             }
         }
-        Ok(content)
-    }
-
-    pub fn get_hub_info(&self, content: &str) -> Result<HubInfo, HubError> {
         let mut de = protocol::de::Deserializer::new();
-        let hub_info = de.deserialize(content)?;
+        let hub_info = de.deserialize(&content)?;
         Ok(hub_info)
     }
 }

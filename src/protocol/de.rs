@@ -1,6 +1,7 @@
 use crate::protocol;
 
 use super::HubInfo;
+use std::str::FromStr;
 
 #[derive(Default, Debug, Clone)]
 pub struct Deserializer {

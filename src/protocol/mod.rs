@@ -8,7 +8,7 @@ pub mod de;
 mod error;
 pub mod ser;
 
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
@@ -24,8 +24,9 @@ pub enum DevicePresent {
     NeedUpdate,
 }
 
-impl DevicePresent {
-    pub fn from_str(s: &str) -> Result<Self, error::Error> {
+impl FromStr for DevicePresent {
+    type Err = error::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "true" => Ok(DevicePresent::Present),
             "false" => Ok(DevicePresent::NotPresent),
@@ -69,31 +70,35 @@ pub enum IOLabel {
 pub enum LockStatus {
     ForceUnlock,
     Locked,
+    Owned,
     Unlocked,
+}
+
+impl FromStr for LockStatus {
+    type Err = error::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "L" => Ok(LockStatus::Locked),
+            "O" => Ok(LockStatus::Owned),
+            "U" => Ok(LockStatus::Unlocked),
+            "F" => Ok(LockStatus::ForceUnlock),
+            _ => Err(error::Error::LockStatusError),
+        }
+    }
 }
 
 impl Display for LockStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            LockStatus::Locked => "Locked",
-            LockStatus::Unlocked => "Unlocked",
-            LockStatus::ForceUnlock => "ForceUnlock",
+            LockStatus::Locked => "L",
+            LockStatus::Owned => "O",
+            LockStatus::Unlocked => "U",
+            LockStatus::ForceUnlock => "F",
         };
         if let Some(width) = f.width() {
             write!(f, "{s:width$}")
         } else {
             write!(f, "{s}")
-        }
-    }
-}
-
-impl LockStatus {
-    pub fn from_str(s: &str) -> Result<Self, error::Error> {
-        match s {
-            "O" => Ok(LockStatus::Locked),
-            "U" => Ok(LockStatus::Unlocked),
-            "F" => Ok(LockStatus::ForceUnlock),
-            _ => Err(error::Error::LockStatusError),
         }
     }
 }
