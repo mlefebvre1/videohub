@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::net::Ipv4Addr;
 use std::net::SocketAddrV4;
 pub mod protocol;
@@ -37,10 +38,10 @@ impl Hub {
         Ok(hub_info)
     }
 
-    pub fn write(&self, data: WriteType) -> Result<(), HubError> {
+    pub fn write(&self, data: WriteType) -> Result<usize, HubError> {
         let ser = protocol::ser::Serializer::new();
 
-        match data {
+        let content_to_write = match data {
             WriteType::VideoOutputRouting(output_routes) => {
                 { ser.serialize_video_output_routes(&output_routes) }?
             }
@@ -50,6 +51,8 @@ impl Hub {
                 ser.serialize_output_locks(output_locks)?
             }
         };
-        Ok(())
+
+        let mut stream = TcpStream::connect(&self.socket_addr)?;
+        Ok(stream.write(content_to_write.as_bytes())?)
     }
 }

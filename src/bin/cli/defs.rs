@@ -45,6 +45,10 @@ pub struct Cli {
         action
     )]
     pub display: bool,
+    #[clap(short = 'u', long = "unlock", help = "Unlock a given port")]
+    pub unlock: Option<usize>,
+    #[clap(short = 'l', long = "lock", help = "Lock a given port")]
+    pub lock: Option<usize>,
 }
 
 impl Cli {
