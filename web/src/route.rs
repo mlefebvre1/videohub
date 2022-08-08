@@ -5,20 +5,20 @@ const DEFAULT_BUTTON_BG_COLOR: &str = "rgb(155, 28, 30)";
 const FOCUSED_BUTTON_BG_COLOR: &str = "rgb(27, 77, 203)";
 
 pub enum Msg {
-    InPortClicked(u32),
-    OutPortClicked(u32),
+    InPortClicked(usize),
+    OutPortClicked(usize),
     Route,
 }
 
 pub struct Model {
-    current_in_port_selected: Option<u32>,
-    current_out_port_selected: Option<u32>,
+    current_in_port_selected: Option<usize>,
+    current_out_port_selected: Option<usize>,
 }
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
-    pub nb_input_ports: u32,
-    pub nb_output_ports: u32,
+    pub nb_input_ports: usize,
+    pub nb_output_ports: usize,
 }
 
 impl Component for Model {
@@ -110,7 +110,7 @@ impl Model {
         }
     }
 
-    fn set_default_buttons_colors(id_prefix: &str, nb_ports: u32) {
+    fn set_default_buttons_colors(id_prefix: &str, nb_ports: usize) {
         for i in 1..=nb_ports {
             Self::set_button_color(&format!("{id_prefix}{i}"), DEFAULT_BUTTON_BG_COLOR)
         }

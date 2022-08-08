@@ -18,7 +18,7 @@ impl Deserializer {
         let mut lines = s.lines();
         loop {
             //Loop until we can't find any block
-            if let Some(block_type) = lines.find_map(|line| Self::get_block_type(line)) {
+            if let Some(block_type) = lines.find_map(Self::get_block_type) {
                 let block = lines
                     .by_ref()
                     .take_while(|&line| !line.is_empty())
@@ -171,9 +171,9 @@ impl Deserializer {
         let seq = Self::deserialize_seq(block, expected_size)?;
         let output_locks: Result<protocol::OutputLocks, protocol::error::Error> = seq
             .iter()
-            .map(|item| protocol::LockStatus::from_str(&item))
+            .map(|item| protocol::LockStatus::from_str(item))
             .collect();
-        Ok(output_locks?)
+        output_locks
     }
 
     fn deserialize_output_routing(
@@ -233,7 +233,6 @@ impl Deserializer {
         let key = item.next();
         let value = item.next();
         if let (Some(key), Some(value)) = (key, value) {
-            // if let (Some(key), Some(value)) = (item.next(), item.next()) {
             Ok((key.to_string(), value.trim().to_string()))
         } else {
             Err(protocol::error::Error::ParseValueError)

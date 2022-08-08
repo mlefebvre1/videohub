@@ -1,14 +1,16 @@
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::Ipv4Addr;
 use std::net::SocketAddrV4;
 pub mod protocol;
 
-use std::{io::Read, net::TcpStream};
+use std::net::TcpStream;
 
 use protocol::{HubInfo, WriteType};
 
 pub type HubError = Box<dyn std::error::Error>;
 pub type HubResult<T> = Result<T, HubError>;
+
+pub const DEFAULT_DEVICE_PORT: u16 = 9990;
 
 #[derive(Debug)]
 pub struct Hub {

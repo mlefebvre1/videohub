@@ -10,6 +10,7 @@ pub mod ser;
 
 use std::{fmt::Display, str::FromStr};
 
+use log::warn;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
@@ -82,7 +83,10 @@ impl FromStr for LockStatus {
             "O" => Ok(LockStatus::Owned),
             "U" => Ok(LockStatus::Unlocked),
             "F" => Ok(LockStatus::ForceUnlock),
-            _ => Err(error::Error::LockStatusError),
+            _ => {
+                warn!("Invalid LockStatus string value {s}");
+                Err(error::Error::LockStatusError)
+            }
         }
     }
 }
