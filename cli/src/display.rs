@@ -20,7 +20,13 @@ pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
     let formatted_output = labels
         .into_iter()
         .enumerate()
-        .map(|(id, label)| format!("|{index:^8}| {label:<78}|", index = id + 1))
+        .map(|(id, label)| {
+            format!(
+                "|{index:^8}| {label_text:<78}|",
+                index = id + 1,
+                label_text = label.text
+            )
+        })
         .collect::<Vec<String>>(); // +1 because indexes are 1 based
     Ok(to_value(formatted_output)?)
 }
@@ -61,10 +67,12 @@ pub fn format_output_labels(args: &HashMap<String, Value>) -> Result<Value> {
         }
     };
     let formatted_output = izip!(output_label, video_output_locks, video_output_routing)
-        .map(|(output_label, lock_state, route)| {
+        .map(|(label, output_lock, route)| {
             format!(
-                "|{dest:^8}| {output_label:<50}| {lock_state:^13}| {src:^11}|",
+                "|{dest:^8}| {label_text:<50}| {lock_status:^13}| {src:^11}|",
                 dest = route.destination + 1,
+                label_text = label.text,
+                lock_status = output_lock.lock_status,
                 src = route.source + 1
             ) // +1 because indexes are 1 based
         })

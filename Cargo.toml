@@ -14,4 +14,4 @@ web-sys = { version = "0.3.58", features = [
 ] }
 
 [workspace]
-members = ["cli/", "web/"]
+members = ["cli/", "rest/", "web/"]

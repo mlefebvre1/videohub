@@ -7,7 +7,7 @@ use log::info;
 use std::{net::Ipv4Addr, str::FromStr};
 use tera::{Context, Tera};
 use videohub::{
-    protocol::{HubInfo, LockStatus, Route, WriteType},
+    protocol::{HubInfo, Label, LockStatus, OutputLock, Route, WriteType},
     Hub, DEFAULT_DEVICE_PORT,
 };
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -18,41 +18,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let videohub = Hub::new(ipv4_addr, DEFAULT_DEVICE_PORT);
 
     if let Some(input_label) = args.input_label {
-        let data = vec![(input_label.index - 1, input_label.value.clone())];
+        let data = vec![Label {
+            id: input_label.index,
+            text: input_label.value.clone(),
+        }];
         info!(
             "Changing label of input port {} to {}",
-            input_label.index - 1,
-            input_label.value
+            input_label.index, input_label.value
         );
         videohub.write(WriteType::InputLabel(&data))?;
     }
     if let Some(output_label) = args.output_label {
-        let data = vec![(output_label.index - 1, output_label.value.clone())];
+        let data = vec![Label {
+            id: output_label.index,
+            text: output_label.value.clone(),
+        }];
         info!(
             "Changing label of output port {} to {}",
-            output_label.index - 1,
-            output_label.value
+            output_label.index, output_label.value
         );
         videohub.write(WriteType::OutputLabel(&data))?;
     }
     if let Some(output_route) = args.output_route {
         let data = vec![Route {
-            source: output_route.a - 1,
-            destination: output_route.b - 1,
+            source: output_route.a,
+            destination: output_route.b,
         }];
         info!(
             "Routing -- Input={} to Output={}",
-            output_route.a - 1,
-            output_route.b - 1
+            output_route.a, output_route.b
         );
         videohub.write(WriteType::VideoOutputRouting(data))?;
     }
     if let Some(index) = args.unlock {
-        let data = vec![(index - 1, LockStatus::ForceUnlock)];
+        let data = vec![OutputLock {
+            id: index,
+            lock_status: LockStatus::ForceUnlock,
+        }];
         videohub.write(WriteType::VideoOutputLocks(&data))?;
     }
     if let Some(index) = args.lock {
-        let data = vec![(index - 1, LockStatus::Locked)];
+        let data = vec![OutputLock {
+            id: index,
+            lock_status: LockStatus::Locked,
+        }];
         videohub.write(WriteType::VideoOutputLocks(&data))?;
     }
     if args.display {

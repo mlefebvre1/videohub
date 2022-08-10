@@ -161,7 +161,14 @@ impl Deserializer {
         block: &str,
         expected_size: usize,
     ) -> Result<Vec<protocol::Label>, protocol::error::Error> {
-        Self::deserialize_seq(block, expected_size)
+        let seq = Self::deserialize_seq(block, expected_size)?;
+        Ok(seq
+            .iter()
+            .map(|(id, text)| protocol::Label {
+                id: *id,
+                text: text.to_string(),
+            })
+            .collect())
     }
 
     fn deserialize_output_locks(
@@ -169,11 +176,13 @@ impl Deserializer {
         expected_size: usize,
     ) -> Result<protocol::OutputLocks, protocol::error::Error> {
         let seq = Self::deserialize_seq(block, expected_size)?;
-        let output_locks: Result<protocol::OutputLocks, protocol::error::Error> = seq
+        Ok(seq
             .iter()
-            .map(|item| protocol::LockStatus::from_str(item))
-            .collect();
-        output_locks
+            .map(|(id, lock_status)| protocol::OutputLock {
+                id: *id,
+                lock_status: protocol::LockStatus::from_str(lock_status).unwrap(),
+            })
+            .collect())
     }
 
     fn deserialize_output_routing(
@@ -183,11 +192,9 @@ impl Deserializer {
         let seq = Self::deserialize_seq(block, expected_size)?;
         let output_routing: protocol::OutputRoutings = seq
             .iter()
-            .map(|item| item.parse::<usize>().unwrap())
-            .enumerate()
-            .map(|(output, input)| protocol::Route {
-                source: input,
-                destination: output,
+            .map(|(output_index, input_index_str)| protocol::Route {
+                source: input_index_str.parse::<usize>().unwrap() + 1,
+                destination: *output_index,
             })
             .collect();
         Ok(output_routing)
@@ -213,23 +220,18 @@ impl Deserializer {
     fn deserialize_seq(
         block: &str,
         expected_size: usize,
-    ) -> Result<Vec<String>, protocol::error::Error> {
+    ) -> Result<Vec<(usize, String)>, protocol::error::Error> {
         let mut seq = Vec::with_capacity(expected_size);
 
-        seq.resize(expected_size, "".to_string());
         for line in block.lines() {
             let (index, value) = Self::get_index_and_value_from_line(line)?;
-            if index < expected_size {
-                seq[index] = value.trim().to_string();
-            } else {
-                return Err(protocol::error::Error::IndexError);
-            }
+            seq.push((index + 1, value.trim().to_string()));
         }
         Ok(seq)
     }
 
     fn get_key_and_value_from_line(line: &str) -> Result<(String, String), protocol::error::Error> {
-        let mut item = line.split(":");
+        let mut item = line.split(':');
         let key = item.next();
         let value = item.next();
         if let (Some(key), Some(value)) = (key, value) {
@@ -290,88 +292,23 @@ fn test_deserialize_labels() {
         0 from_RTR_B\n\
         1 BNC Patch RD1-C - 2\n\
         2 BNC Patch RD1-C - 3\n\
-        3 mlefebvre-input2\n\
-        4 BNC Patch RD1-C - 5\n\
-        5 BNC Patch RD1-C - 6\n\
-        6 BNC Patch RD1-C - 7\n\
-        7 sebas input shelf ci\n\
-        8 BNC Patch RD1-C - 9\n\
-        9 mlefebvre-input1\n\
-        10 BNC Patch RD1-C - 11 (simon)\n\
-        11 BNC Patch RD1-C - 12\n\
-        12 BNC Patch RD1-C - 13\n\
-        13 BNC Patch RD1-C - 14\n\
-        14 BNC Patch RD1-C - 15\n\
-        15 BNC Patch RD1-C - 16\n\
-        16 BNC Patch RD1-C - 17\n\
-        17 BNC Patch RD1-C - 18\n\
-        18 BNC Patch RD1-C - 19\n\
-        19 BNC Patch RD1-C - 20\n\
-        20 BNC Patch RD1-C - 21\n\
-        21 BNC Patch RD1-C - 22\n\
-        22 BNC Patch RD1-C - 23\n\
-        23 BNC Patch RD1-C - 24\n\
-        24 BNC Patch RD1-C - 25\n\
-        25 BNC Patch RD1-C - 26\n\
-        26 BNC Patch RD1-C - 27\n\
-        27 BNC Patch RD1-C - 28\n\
-        28 BNC Patch RD1-C - 29\n\
-        29 BNC Patch RD1-C - 30\n\
-        30 BNC Patch RD1-C - 31\n\
-        31 BNC Patch RD1-C - 32\n\
-        32 BNC Patch RD1-B - 9\n\
-        33 From_Dynamo_out_1\n\
-        34 From_POBOX6_Out_1\n\
-        35 From_Rocket_out_1\n\
-        36 BNC Patch RD1-B - 13\n\
-        37 BNC Patch RD1-B - 14\n\
-        38 BNC Patch RD1-B - 15\n\
-        39 BNC Patch RD1-B - 16\n\
         ";
     let expected = vec![
-        "from_RTR_B".to_string(),
-        "BNC Patch RD1-C - 2".to_string(),
-        "BNC Patch RD1-C - 3".to_string(),
-        "mlefebvre-input2".to_string(),
-        "BNC Patch RD1-C - 5".to_string(),
-        "BNC Patch RD1-C - 6".to_string(),
-        "BNC Patch RD1-C - 7".to_string(),
-        "sebas input shelf ci".to_string(),
-        "BNC Patch RD1-C - 9".to_string(),
-        "mlefebvre-input1".to_string(),
-        "BNC Patch RD1-C - 11 (simon)".to_string(),
-        "BNC Patch RD1-C - 12".to_string(),
-        "BNC Patch RD1-C - 13".to_string(),
-        "BNC Patch RD1-C - 14".to_string(),
-        "BNC Patch RD1-C - 15".to_string(),
-        "BNC Patch RD1-C - 16".to_string(),
-        "BNC Patch RD1-C - 17".to_string(),
-        "BNC Patch RD1-C - 18".to_string(),
-        "BNC Patch RD1-C - 19".to_string(),
-        "BNC Patch RD1-C - 20".to_string(),
-        "BNC Patch RD1-C - 21".to_string(),
-        "BNC Patch RD1-C - 22".to_string(),
-        "BNC Patch RD1-C - 23".to_string(),
-        "BNC Patch RD1-C - 24".to_string(),
-        "BNC Patch RD1-C - 25".to_string(),
-        "BNC Patch RD1-C - 26".to_string(),
-        "BNC Patch RD1-C - 27".to_string(),
-        "BNC Patch RD1-C - 28".to_string(),
-        "BNC Patch RD1-C - 29".to_string(),
-        "BNC Patch RD1-C - 30".to_string(),
-        "BNC Patch RD1-C - 31".to_string(),
-        "BNC Patch RD1-C - 32".to_string(),
-        "BNC Patch RD1-B - 9".to_string(),
-        "From_Dynamo_out_1".to_string(),
-        "From_POBOX6_Out_1".to_string(),
-        "From_Rocket_out_1".to_string(),
-        "BNC Patch RD1-B - 13".to_string(),
-        "BNC Patch RD1-B - 14".to_string(),
-        "BNC Patch RD1-B - 15".to_string(),
-        "BNC Patch RD1-B - 16".to_string(),
+        protocol::Label {
+            id: 1,
+            text: "from_RTR_B".to_string(),
+        },
+        protocol::Label {
+            id: 2,
+            text: "BNC Patch RD1-C - 2".to_string(),
+        },
+        protocol::Label {
+            id: 3,
+            text: "BNC Patch RD1-C - 3".to_string(),
+        },
     ];
 
-    let input_labels = Deserializer::deserialize_labels(block, 40).unwrap();
+    let input_labels = Deserializer::deserialize_labels(block, 3).unwrap();
     assert!(input_labels == expected);
 }
 
@@ -379,89 +316,29 @@ fn test_deserialize_labels() {
 fn test_deserialize_output_locks() {
     let block = "\
         0 U\n\
-        1 U\n\
-        2 U\n\
-        3 U\n\
-        4 U\n\
-        5 U\n\
-        6 U\n\
-        7 U\n\
-        8 U\n\
-        9 U\n\
-        10 U\n\
-        11 F\n\
-        12 U\n\
-        13 U\n\
-        14 O\n\
-        15 U\n\
-        16 O\n\
-        17 U\n\
-        18 U\n\
-        19 U\n\
-        20 U\n\
-        21 F\n\
-        22 U\n\
-        23 U\n\
-        24 U\n\
-        25 U\n\
-        26 U\n\
-        27 U\n\
-        28 U\n\
-        29 U\n\
-        30 U\n\
-        31 U\n\
-        32 U\n\
-        33 U\n\
-        34 U\n\
-        35 U\n\
-        36 O\n\
-        37 O\n\
-        38 O\n\
-        39 O\n\
+        1 O\n\
+        2 F\n\
+        3 L\n\
         ";
     let expected = vec![
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::ForceUnlock,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Locked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Locked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::ForceUnlock,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Unlocked,
-        protocol::LockStatus::Locked,
-        protocol::LockStatus::Locked,
-        protocol::LockStatus::Locked,
-        protocol::LockStatus::Locked,
+        protocol::OutputLock {
+            id: 1,
+            lock_status: protocol::LockStatus::Unlocked,
+        },
+        protocol::OutputLock {
+            id: 2,
+            lock_status: protocol::LockStatus::Owned,
+        },
+        protocol::OutputLock {
+            id: 3,
+            lock_status: protocol::LockStatus::ForceUnlock,
+        },
+        protocol::OutputLock {
+            id: 4,
+            lock_status: protocol::LockStatus::Locked,
+        },
     ];
-    let input_labels = Deserializer::deserialize_output_locks(block, 40).unwrap();
+    let input_labels = Deserializer::deserialize_output_locks(block, 4).unwrap();
     assert!(input_labels == expected);
 }
 
@@ -470,52 +347,15 @@ fn test_deserialize_output_routing() {
     let block = "\
                         0 39\n\
                         1 1\n\
-                        2 2\n\
-                        3 6\n\
-                        4 4\n\
-                        5 5\n\
-                        6 6\n\
-                        7 7\n\
-                        8 14\n\
-                        9 9\n\
-                        10 32\n\
-                        11 11\n\
-                        12 34\n\
-                        13 14\n\
-                        14 0\n\
-                        15 14\n\
-                        16 1\n\
-                        17 1\n\
-                        18 1\n\
-                        19 31\n\
-                        20 31\n\
-                        21 0\n\
-                        22 35\n\
-                        23 33\n\
-                        24 0\n\
-                        25 31\n\
-                        26 0\n\
-                        27 32\n\
-                        28 32\n\
-                        29 32\n\
-                        30 0\n\
-                        31 1\n\
-                        32 32\n\
-                        33 33\n\
-                        34 34\n\
-                        35 31\n\
-                        36 36\n\
-                        37 37\n\
-                        38 38\n\
-                        39 32\n\
+                        6 3\n\
+                        0 14\n\
+                        14 15\n\
+                        31 19\n\
+                        32 39\n\
                         ";
     let expected = vec![
         protocol::Route {
-            source: 39,
-            destination: 0,
-        },
-        protocol::Route {
-            source: 1,
+            source: 40,
             destination: 1,
         },
         protocol::Route {
@@ -523,155 +363,27 @@ fn test_deserialize_output_routing() {
             destination: 2,
         },
         protocol::Route {
-            source: 6,
-            destination: 3,
-        },
-        protocol::Route {
             source: 4,
-            destination: 4,
-        },
-        protocol::Route {
-            source: 5,
-            destination: 5,
-        },
-        protocol::Route {
-            source: 6,
-            destination: 6,
-        },
-        protocol::Route {
-            source: 7,
             destination: 7,
         },
         protocol::Route {
-            source: 14,
-            destination: 8,
+            source: 15,
+            destination: 1,
         },
         protocol::Route {
-            source: 9,
-            destination: 9,
-        },
-        protocol::Route {
-            source: 32,
-            destination: 10,
-        },
-        protocol::Route {
-            source: 11,
-            destination: 11,
-        },
-        protocol::Route {
-            source: 34,
-            destination: 12,
-        },
-        protocol::Route {
-            source: 14,
-            destination: 13,
-        },
-        protocol::Route {
-            source: 0,
-            destination: 14,
-        },
-        protocol::Route {
-            source: 14,
+            source: 16,
             destination: 15,
         },
         protocol::Route {
-            source: 1,
-            destination: 16,
-        },
-        protocol::Route {
-            source: 1,
-            destination: 17,
-        },
-        protocol::Route {
-            source: 1,
-            destination: 18,
-        },
-        protocol::Route {
-            source: 31,
-            destination: 19,
-        },
-        protocol::Route {
-            source: 31,
-            destination: 20,
-        },
-        protocol::Route {
-            source: 0,
-            destination: 21,
-        },
-        protocol::Route {
-            source: 35,
-            destination: 22,
-        },
-        protocol::Route {
-            source: 33,
-            destination: 23,
-        },
-        protocol::Route {
-            source: 0,
-            destination: 24,
-        },
-        protocol::Route {
-            source: 31,
-            destination: 25,
-        },
-        protocol::Route {
-            source: 0,
-            destination: 26,
-        },
-        protocol::Route {
-            source: 32,
-            destination: 27,
-        },
-        protocol::Route {
-            source: 32,
-            destination: 28,
-        },
-        protocol::Route {
-            source: 32,
-            destination: 29,
-        },
-        protocol::Route {
-            source: 0,
-            destination: 30,
-        },
-        protocol::Route {
-            source: 1,
-            destination: 31,
-        },
-        protocol::Route {
-            source: 32,
+            source: 20,
             destination: 32,
         },
         protocol::Route {
-            source: 33,
+            source: 40,
             destination: 33,
         },
-        protocol::Route {
-            source: 34,
-            destination: 34,
-        },
-        protocol::Route {
-            source: 31,
-            destination: 35,
-        },
-        protocol::Route {
-            source: 36,
-            destination: 36,
-        },
-        protocol::Route {
-            source: 37,
-            destination: 37,
-        },
-        protocol::Route {
-            source: 38,
-            destination: 38,
-        },
-        protocol::Route {
-            source: 32,
-            destination: 39,
-        },
     ];
-    let actual = Deserializer::deserialize_output_routing(block, 40).unwrap();
+    let actual = Deserializer::deserialize_output_routing(block, 7).unwrap();
     assert!(actual == expected);
 }
 

@@ -56,7 +56,13 @@ pub struct DeviceInfo {
     pub nb_serial_ports: usize,
 }
 
-pub type Label = String;
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+pub struct Label {
+    pub id: usize,
+    pub text: String,
+}
+
+// pub type Label = String;
 
 pub type InputLabel = Vec<Label>;
 
@@ -113,7 +119,13 @@ impl Default for LockStatus {
     }
 }
 
-pub type OutputLocks = Vec<LockStatus>;
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+pub struct OutputLock {
+    pub id: usize,
+    pub lock_status: LockStatus,
+}
+
+pub type OutputLocks = Vec<OutputLock>;
 
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Route {
@@ -152,7 +164,7 @@ pub enum BlockType {
 
 pub enum WriteType<'a> {
     VideoOutputRouting(OutputRoutings),
-    OutputLabel(&'a [(usize, Label)]),
-    InputLabel(&'a [(usize, Label)]),
-    VideoOutputLocks(&'a [(usize, LockStatus)]),
+    OutputLabel(&'a [Label]),
+    InputLabel(&'a [Label]),
+    VideoOutputLocks(&'a [OutputLock]),
 }
