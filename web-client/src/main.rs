@@ -1,4 +1,5 @@
 mod app;
+mod fetch;
 mod route;
 
 use std::{net::Ipv4Addr, str::FromStr};

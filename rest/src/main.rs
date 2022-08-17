@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate rocket;
-use rocket::{response::status::BadRequest, serde::json::Json};
-use std::{net::Ipv4Addr, str::FromStr};
+use rocket::{fs::FileServer, response::status::BadRequest, serde::json::Json};
+use std::{net::Ipv4Addr, path::Path, str::FromStr};
 
 use videohub::{
     protocol::{
@@ -13,7 +13,7 @@ use videohub::{
 type RequestResult<T> = Result<Json<T>, BadRequest<String>>;
 
 #[get("/", format = "json")]
-fn root_get() -> &'static str {
+fn hub() -> &'static str {
     r#"[
       "device_info",
       "input_labels",
@@ -111,20 +111,22 @@ fn connect_to_hub() -> Result<Hub, HubError> {
 }
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount(
-        "/",
-        routes![
-            root_get,
-            device_info_get,
-            input_labels_get,
-            input_labels_put,
-            output_labels_get,
-            output_labels_put,
-            video_output_locks_get,
-            video_output_locks_put,
-            video_output_routing_get,
-            video_output_routing_put,
-            configuration_get,
-        ],
-    )
+    rocket::build()
+        .mount("/", FileServer::from(Path::new("../web-client/dist/")))
+        .mount(
+            "/hub",
+            routes![
+                hub,
+                device_info_get,
+                input_labels_get,
+                input_labels_put,
+                output_labels_get,
+                output_labels_put,
+                video_output_locks_get,
+                video_output_locks_put,
+                video_output_routing_get,
+                video_output_routing_put,
+                configuration_get,
+            ],
+        )
 }

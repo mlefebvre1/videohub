@@ -1,3 +1,7 @@
+use super::fetch::{fetch_input_labels, fetch_output_labels, fetch_output_routings};
+
+use gloo::timers::callback::Interval;
+use videohub::protocol::{InputLabel, OutputLabel, OutputRoutings};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use yew::prelude::*;
 
@@ -7,12 +11,20 @@ const FOCUSED_BUTTON_BG_COLOR: &str = "rgb(27, 77, 203)";
 pub enum Msg {
     InPortClicked(usize),
     OutPortClicked(usize),
+    FetchInputLabels(InputLabel),
+    FetchOutputLabels(OutputLabel),
+    FetchOutputRoutings(OutputRoutings),
+    FetchVideohubInfo,
     Route,
 }
 
 pub struct Model {
     current_in_port_selected: Option<usize>,
     current_out_port_selected: Option<usize>,
+    input_labels: Option<InputLabel>,
+    output_labels: Option<OutputLabel>,
+    routes: Option<OutputRoutings>,
+    _interval_handle: Interval,
 }
 
 #[derive(Properties, PartialEq)]
@@ -25,10 +37,21 @@ impl Component for Model {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
+        ctx.link().send_message(Msg::FetchVideohubInfo);
+
+        let fetch_videohub_info_interval_handle = {
+            let link = ctx.link().clone();
+            Interval::new(1_000, move || link.send_message(Msg::FetchVideohubInfo))
+        };
+
         Self {
             current_in_port_selected: None,
             current_out_port_selected: None,
+            input_labels: None,
+            output_labels: None,
+            routes: None,
+            _interval_handle: fetch_videohub_info_interval_handle,
         }
     }
 
@@ -46,6 +69,24 @@ impl Component for Model {
                 self.set_focused_output_button_color(ctx);
                 true
             }
+            Msg::FetchInputLabels(labels) => {
+                self.input_labels = Some(labels);
+                true
+            }
+            Msg::FetchOutputLabels(labels) => {
+                self.output_labels = Some(labels);
+                true
+            }
+            Msg::FetchOutputRoutings(routes) => {
+                self.routes = Some(routes);
+                true
+            }
+            Msg::FetchVideohubInfo => {
+                fetch_input_labels(ctx);
+                fetch_output_labels(ctx);
+                fetch_output_routings(ctx);
+                true
+            }
             Msg::Route => {
                 // TODO ROUTE!
                 self.current_in_port_selected = None;
@@ -60,26 +101,33 @@ impl Component for Model {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
 
-        let in_buttons = 1..=ctx.props().nb_input_ports;
-        let out_buttons = 1..=ctx.props().nb_output_ports;
+        let input_labels = match self.input_labels.clone() {
+            Some(labels) => labels,
+            None => vec![],
+        };
+
+        let output_labels = match self.output_labels.clone() {
+            Some(labels) => labels,
+            None => vec![],
+        };
 
         html! {
             <>
                 <div id="input_ports">
-                <h1 style={"text-align: center"}>{"Input Ports"}</h1>
-                {
-                    html! {
-                        for in_buttons.map(|i| html!(<button id={format!("in_button_{i}")} onclick={link.callback(move |_| Msg::InPortClicked(i))} >{format!("IN{i}")}</button>))
+                    <h1 style={"text-align: center"}>{"Input Ports"}</h1>
+                    {
+                        html!{
+                            for input_labels.into_iter().map(|label| html!(<button id={format!("in_button_{}", label.id)} onclick={link.callback(move |_| Msg::InPortClicked(label.id))} >{format!("IN{}", label.id)}</button>))
+                        }
                     }
-                }
                 </div>
                 <div id="output_ports">
-                <h1 style={"text-align: center"}>{"Output Ports"}</h1>
-                {
-                    html! {
-                        for out_buttons.map(|i| html!(<button id={format!("out_button_{i}")} onclick={link.callback(move |_| Msg::OutPortClicked(i))} >{format!("OUT{i}")}</button>))
+                    <h1 style={"text-align: center"}>{"Output Ports"}</h1>
+                    {
+                        html!{
+                            for output_labels.into_iter().map(|label| html!(<button id={format!("out_button_{}", label.id)} onclick={link.callback(move |_| Msg::OutPortClicked(label.id))} >{format!("OUT{}", label.id)}</button>))
+                        }
                     }
-                }
                 </div>
                 <div id="route">
                     <button id={"route_button"} onclick={link.callback(move |_| Msg::Route)}>{"Route"}</button>
