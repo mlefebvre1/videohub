@@ -23,11 +23,11 @@ pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
         .map(|(id, label)| {
             format!(
                 "|{index:^8}| {label_text:<78}|",
-                index = id + 1,
+                index = id,
                 label_text = label.text
             )
         })
-        .collect::<Vec<String>>(); // +1 because indexes are 1 based
+        .collect::<Vec<String>>();
     Ok(to_value(formatted_output)?)
 }
 
@@ -70,11 +70,11 @@ pub fn format_output_labels(args: &HashMap<String, Value>) -> Result<Value> {
         .map(|(label, output_lock, route)| {
             format!(
                 "|{dest:^8}| {label_text:<50}| {lock_status:^13}| {src:^11}|",
-                dest = route.destination + 1,
+                dest = route.destination,
                 label_text = label.text,
                 lock_status = output_lock.lock_status,
-                src = route.source + 1
-            ) // +1 because indexes are 1 based
+                src = route.source
+            )
         })
         .collect::<Vec<String>>();
     Ok(to_value(formatted_output)?)
