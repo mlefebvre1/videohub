@@ -3,7 +3,7 @@ use std::net::Ipv4Addr;
 use super::fetch::fetch_device_info;
 use super::route;
 
-use videohub::protocol::{DeviceInfo, OutputRoutings};
+use videohub::protocol::DeviceInfo;
 use yew::prelude::*;
 
 pub struct Model {
@@ -18,7 +18,6 @@ pub struct Props {
 
 pub enum Msg {
     FetchDeviceInfo(DeviceInfo),
-    FetchOutputRoutings(OutputRoutings),
 }
 
 impl Component for Model {
@@ -42,14 +41,10 @@ impl Component for Model {
                 self.friendly_name = Some(device_info.friendly_name);
                 true
             }
-            Msg::FetchOutputRoutings(_output_routings) => {
-                //todo
-                false
-            }
         }
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <>
                 <p>{format!("Friendly Name: {}", self.friendly_name.as_ref().unwrap())}</p>

@@ -112,7 +112,7 @@ fn connect_to_hub() -> Result<Hub, HubError> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", FileServer::from(Path::new("../web-client/dist/")))
+        .mount("/", FileServer::from(Path::new("frontend/dist/")))
         .mount(
             "/hub",
             routes![
