@@ -1,180 +1,453 @@
-use super::{Label, OutputLock, OutputRoutings};
-use std::fmt::Write;
+use serde::{ser, Serialize};
 
-#[derive(Default)]
-pub struct Serializer {}
+use super::error::{Error, Result};
 
-impl Serializer {
-    pub fn new() -> Self {
-        Self {}
+pub struct Serializer {
+    output: String,
+}
+
+pub fn to_string<T>(value: &T) -> Result<String>
+where
+    T: Serialize,
+{
+    let mut serializer = Serializer {
+        output: String::new(),
+    };
+    value.serialize(&mut serializer)?;
+    Ok(serializer.output)
+}
+
+impl<'a> ser::Serializer for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
+
+    type SerializeSeq = Self;
+    type SerializeTuple = Self;
+    type SerializeTupleStruct = Self;
+    type SerializeTupleVariant = Self;
+    type SerializeMap = Self;
+    type SerializeStruct = Self;
+    type SerializeStructVariant = Self;
+
+    fn serialize_bool(self, v: bool) -> Result<()> {
+        self.output += if v { "true" } else { "false" };
+        Ok(())
     }
 
-    pub fn serialize_video_output_routes(
-        &self,
-        output_routes: &OutputRoutings,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let mut s = "VIDEO OUTPUT ROUTING:\n".to_string();
-        for route in output_routes.iter() {
-            writeln!(s, "{} {}", route.destination - 1, route.source - 1)?;
-        }
-        s.push('\n');
-        Ok(s)
+    fn serialize_i8(self, v: i8) -> Result<()> {
+        self.serialize_i64(i64::from(v))
     }
 
-    pub fn serialize_output_labels(
-        &self,
-        labels: &[Label],
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let mut s = "OUTPUT LABELS:\n".to_string();
-        for label in labels {
-            writeln!(s, "{} {}", label.id - 1, label.text)?;
-        }
-        s.push('\n');
-        Ok(s)
+    fn serialize_i16(self, v: i16) -> Result<()> {
+        self.serialize_i64(i64::from(v))
     }
 
-    pub fn serialize_input_labels(
-        &self,
-        labels: &[Label],
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let mut s = "INPUT LABELS:\n".to_string();
-        for label in labels.iter() {
-            writeln!(s, "{} {}", label.id - 1, label.text)?;
-        }
-        s.push('\n');
-        Ok(s)
+    fn serialize_i32(self, v: i32) -> Result<()> {
+        self.serialize_i64(i64::from(v))
     }
 
-    pub fn serialize_output_locks(
-        &self,
-        output_locks: &[OutputLock],
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let mut s = "VIDEO OUTPUT LOCKS:\n".to_string();
-        for output_lock in output_locks.iter() {
-            writeln!(s, "{} {}", output_lock.id - 1, output_lock.lock_status)?;
+    fn serialize_i64(self, v: i64) -> Result<()> {
+        self.output += &v.to_string();
+        Ok(())
+    }
+
+    fn serialize_u8(self, v: u8) -> Result<()> {
+        self.serialize_u64(u64::from(v))
+    }
+
+    fn serialize_u16(self, v: u16) -> Result<()> {
+        self.serialize_u64(u64::from(v))
+    }
+
+    fn serialize_u32(self, v: u32) -> Result<()> {
+        self.serialize_u64(u64::from(v))
+    }
+
+    fn serialize_u64(self, v: u64) -> Result<()> {
+        self.output += &v.to_string();
+        Ok(())
+    }
+
+    fn serialize_f32(self, v: f32) -> Result<()> {
+        self.serialize_f64(f64::from(v))
+    }
+
+    fn serialize_f64(self, v: f64) -> Result<()> {
+        self.output += &v.to_string();
+        Ok(())
+    }
+
+    fn serialize_char(self, v: char) -> Result<()> {
+        self.serialize_str(&v.to_string())
+    }
+
+    fn serialize_str(self, v: &str) -> Result<()> {
+        self.output += v;
+        Ok(())
+    }
+
+    fn serialize_bytes(self, v: &[u8]) -> Result<()> {
+        use serde::ser::SerializeSeq;
+        let mut seq = self.serialize_seq(Some(v.len()))?;
+        for byte in v {
+            seq.serialize_element(byte)?;
         }
-        s.push('\n');
-        Ok(s)
+        seq.end()
+    }
+
+    fn serialize_none(self) -> Result<()> {
+        self.serialize_unit()
+    }
+
+    fn serialize_some<T>(self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(self)
+    }
+
+    fn serialize_unit(self) -> Result<()> {
+        self.output += "\n";
+        Ok(())
+    }
+
+    fn serialize_unit_struct(self, name: &'static str) -> Result<()> {
+        self.output += name;
+        self.serialize_unit()
+    }
+
+    fn serialize_unit_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+    ) -> Result<()> {
+        self.serialize_str(variant)
+    }
+
+    fn serialize_newtype_struct<T>(self, name: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        self.output += name;
+        value.serialize(self)
+    }
+
+    fn serialize_newtype_variant<T>(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        value: &T,
+    ) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut *self)?;
+        Ok(())
+    }
+
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
+        Ok(self)
+    }
+
+    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
+        self.serialize_seq(Some(len))
+    }
+
+    fn serialize_tuple_struct(
+        self,
+        name: &'static str,
+        len: usize,
+    ) -> Result<Self::SerializeTupleStruct> {
+        self.output += name;
+        self.serialize_seq(Some(len))
+    }
+
+    fn serialize_tuple_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeTupleVariant> {
+        variant.serialize(&mut *self)?;
+        Ok(self)
+    }
+
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
+        Ok(self)
+    }
+
+    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
+        self.output += name;
+        self.serialize_map(Some(len))
+    }
+
+    fn serialize_struct_variant(
+        self,
+        name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeStructVariant> {
+        self.output += name;
+        variant.serialize(&mut *self)?;
+        Ok(self)
     }
 }
 
-#[test]
-fn test_serialize_output_video_output_routes() {
-    use super::Route;
+impl<'a> ser::SerializeSeq for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
 
-    let routes = vec![Route {
-        destination: 1,
-        source: 2,
-    }];
-    let serializer = Serializer::new();
-    assert_eq!(
-        &serializer.serialize_video_output_routes(&routes).unwrap(),
-        "VIDEO OUTPUT ROUTING:\n0 1\n\n"
-    );
+    fn serialize_element<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)
+    }
 
-    let routes = vec![
-        Route {
-            destination: 1,
-            source: 2,
-        },
-        Route {
-            destination: 4,
-            source: 3,
-        },
-    ];
-    assert_eq!(
-        &serializer.serialize_video_output_routes(&routes).unwrap(),
-        "VIDEO OUTPUT ROUTING:\n0 1\n3 2\n\n",
-    );
+    fn end(self) -> Result<()> {
+        self.output += "\n";
+        Ok(())
+    }
 }
 
-#[test]
-fn test_serialize_output_labels() {
-    let labels = vec![Label {
-        id: 1,
-        text: "Output Label 0".to_string(),
-    }];
-    // let labels = vec![(0_usize, "Output Label 0".to_string())];
-    let expected = "OUTPUT LABELS:\n0 Output Label 0\n\n";
-    let serializer = Serializer::new();
-    assert_eq!(
-        &serializer.serialize_output_labels(&labels).unwrap(),
-        expected
-    );
+impl<'a> ser::SerializeTuple for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
 
-    let labels = vec![
-        Label {
-            id: 1,
-            text: "Output Label 0".to_string(),
-        },
-        Label {
-            id: 2,
-            text: "Output Label 1".to_string(),
-        },
-    ];
-    let expected = "OUTPUT LABELS:\n0 Output Label 0\n1 Output Label 1\n\n";
-    let serializer = Serializer::new();
-    assert_eq!(
-        &serializer.serialize_output_labels(&labels).unwrap(),
-        expected
-    );
+    fn serialize_element<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)?;
+        self.output += " ";
+        Ok(())
+    }
+
+    fn end(self) -> Result<()> {
+        self.output.pop();
+        self.output += "\n";
+        Ok(())
+    }
 }
 
-#[test]
-fn test_serialize_input_labels() {
-    let labels = vec![Label {
-        id: 1,
-        text: "Input Label 0".to_string(),
-    }];
-    let expected = "INPUT LABELS:\n0 Input Label 0\n\n";
-    let serializer = Serializer::new();
-    assert_eq!(
-        &serializer.serialize_input_labels(&labels).unwrap(),
-        expected
-    );
+impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
 
-    let labels = vec![
-        Label {
-            id: 1,
-            text: "Input Label 0".to_string(),
-        },
-        Label {
-            id: 2,
-            text: "Input Label 1".to_string(),
-        },
-    ];
-    let expected = "INPUT LABELS:\n0 Input Label 0\n1 Input Label 1\n\n";
-    let serializer = Serializer::new();
-    assert_eq!(
-        &serializer.serialize_input_labels(&labels).unwrap(),
-        expected
-    );
+    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)?;
+        self.output += " ";
+        Ok(())
+    }
+
+    fn end(self) -> Result<()> {
+        self.output.pop();
+        self.output += "\n";
+        Ok(())
+    }
 }
 
-#[test]
-fn test_serialize_output_locks() {
-    let lock_status = vec![
-        OutputLock {
-            id: 1,
-            lock_status: super::LockStatus::Unlocked,
-        },
-        OutputLock {
-            id: 2,
-            lock_status: super::LockStatus::Locked,
-        },
-        OutputLock {
-            id: 3,
-            lock_status: super::LockStatus::ForceUnlock,
-        },
-        OutputLock {
-            id: 4,
-            lock_status: super::LockStatus::Owned,
-        },
-    ];
-    let expected = "VIDEO OUTPUT LOCKS:\n0 U\n1 L\n2 F\n3 O\n\n";
-    let serializer = Serializer::new();
-    assert_eq!(
-        &serializer.serialize_output_locks(&lock_status).unwrap(),
-        expected
-    );
+impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)?;
+        self.output += " ";
+        Ok(())
+    }
+
+    fn end(self) -> Result<()> {
+        self.output.pop();
+        self.output += "\n";
+
+        Ok(())
+    }
+}
+
+impl<'a> ser::SerializeMap for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        key.serialize(&mut **self)
+    }
+
+    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        self.output += ": ";
+        value.serialize(&mut **self)?;
+        self.output += "\n";
+        Ok(())
+    }
+
+    fn end(self) -> Result<()> {
+        self.output += "\n";
+        Ok(())
+    }
+}
+
+impl<'a> ser::SerializeStruct for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        key.serialize(&mut **self)?;
+        self.output += ": ";
+        value.serialize(&mut **self)?;
+        self.output += "\n";
+        Ok(())
+    }
+
+    fn end(self) -> Result<()> {
+        self.output += "\n";
+        Ok(())
+    }
+}
+
+impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        key.serialize(&mut **self)?;
+        self.output += ": ";
+        value.serialize(&mut **self)?;
+        self.output += "\n";
+        Ok(())
+    }
+
+    fn end(self) -> Result<()> {
+        self.output += "\n";
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::protocol;
+
+    #[test]
+    fn test_protocol_preamble() {
+        let preamble = protocol::BlockType::ProtocolPreamble(protocol::ProtocolPreamble {
+            version: "2.3".to_string(),
+        });
+        assert_eq!(
+            &to_string(&preamble).unwrap(),
+            "PROTOCOL PREAMBLE:\nVersion: 2.3\n\n"
+        );
+    }
+
+    #[test]
+    fn test_device_info() {
+        let device_info = protocol::BlockType::DeviceInfo(protocol::DeviceInfo {
+            device_present: protocol::DevicePresent::Present,
+            model_name: "Foo".to_string(),
+            friendly_name: "Bar".to_string(),
+            unique_id: "XXXX".to_string(),
+            nb_video_inputs: 40,
+            nb_video_processing_units: 2,
+            nb_video_outputs: 40,
+            nb_video_monitoring_outputs: 1,
+            nb_serial_ports: 0,
+        });
+        let result = to_string(&device_info).unwrap();
+        let expected = "VIDEOHUB DEVICE:\n\
+                              Device present: true\n\
+                              Model name: Foo\n\
+                              Friendly name: Bar\n\
+                              Unique ID: XXXX\n\
+                              Video inputs: 40\n\
+                              Video processing units: 2\n\
+                              Video outputs: 40\n\
+                              Video monitoring outputs: 1\n\
+                              Serial ports: 0\n\n";
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_input_labels() {
+        let labels = protocol::BlockType::InputLabels(protocol::InputLabels(vec![
+            protocol::Label(2, "Bar 2".to_string()),
+            protocol::Label(3, "Foo 3".to_string()),
+        ]));
+        let result = to_string(&labels).unwrap();
+        assert_eq!(&result, "INPUT LABELS:\n2 Bar 2\n3 Foo 3\n\n");
+    }
+
+    #[test]
+    fn test_output_labels() {
+        let labels = protocol::BlockType::OutputLabels(protocol::OutputLabels(vec![
+            protocol::Label(2, "Bar 2".to_string()),
+            protocol::Label(3, "Foo 3".to_string()),
+        ]));
+        let result = to_string(&labels).unwrap();
+        assert_eq!(&result, "OUTPUT LABELS:\n2 Bar 2\n3 Foo 3\n\n");
+    }
+
+    #[test]
+    fn test_output_locks() {
+        let labels = protocol::BlockType::VideoOutputLocks(protocol::OutputLocks(vec![
+            protocol::OutputLock(30, protocol::LockStatus::Locked),
+            protocol::OutputLock(24, protocol::LockStatus::Unlocked),
+        ]));
+        let result = to_string(&labels).unwrap();
+        assert_eq!(&result, "VIDEO OUTPUT LOCKS:\n30 L\n24 U\n\n");
+    }
+
+    #[test]
+    fn test_output_routing() {
+        let labels = protocol::BlockType::VideoOutputRouting(protocol::OutputRoutings(vec![
+            protocol::Route(0, 5),
+            protocol::Route(36, 6),
+            protocol::Route(13, 13),
+        ]));
+        let result = to_string(&labels).unwrap();
+        assert_eq!(&result, "VIDEO OUTPUT ROUTINGS:\n0 5\n36 6\n13 13\n\n");
+    }
+
+    #[test]
+    fn test_configuration() {
+        let config_true =
+            protocol::BlockType::Configuration(protocol::Configuration { take_mode: true });
+        assert_eq!(
+            &to_string(&config_true).unwrap(),
+            "CONFIGURATION:\nTake Mode: true\n\n"
+        );
+    }
+
+    #[test]
+    fn test_end_prelude() {
+        let end = protocol::BlockType::EndPrelude(protocol::EndPrelude);
+        assert_eq!(&to_string(&end).unwrap(), "END PRELUDE:\n\n");
+    }
+
+    #[test]
+    fn test_enum() {
+        let lock_status = protocol::LockStatus::Unlocked;
+        let result = to_string(&lock_status).unwrap();
+        assert_eq!(result, "U");
+    }
 }

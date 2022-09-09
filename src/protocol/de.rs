@@ -1,399 +1,564 @@
-use crate::protocol;
+use std::ops::{AddAssign, MulAssign};
 
-use super::HubInfo;
-use std::str::FromStr;
+use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
+use serde::{forward_to_deserialize_any, Deserialize};
 
-#[derive(Default, Debug, Clone)]
-pub struct Deserializer {
-    hub_infos: HubInfo,
+use super::error::{Error, Result};
+
+pub struct Deserializer<'de> {
+    input: &'de str,
 }
 
-impl Deserializer {
-    pub fn new() -> Self {
-        Self {
-            hub_infos: Default::default(),
-        }
-    }
-    pub fn deserialize(&mut self, s: &str) -> Result<HubInfo, protocol::error::Error> {
-        let mut lines = s.lines();
-        loop {
-            //Loop until we can't find any block
-            if let Some(block_type) = lines.find_map(Self::get_block_type) {
-                let block = lines
-                    .by_ref()
-                    .take_while(|&line| !line.is_empty())
-                    .collect::<Vec<&str>>()
-                    .join("\n");
-                self.deserialize_block(block_type, &block)?;
-            } else {
-                return Ok(self.hub_infos.clone());
-            }
-        }
+pub fn from_str<'a, T>(s: &'a str) -> Result<T>
+where
+    T: Deserialize<'a>,
+{
+    let mut deserializer = Deserializer { input: s };
+    let t = T::deserialize(&mut deserializer)?;
+    Ok(t)
+}
+
+impl<'de> Deserializer<'de> {
+    // Look at the first character in the input without consuming it.
+    fn peek_char(&mut self) -> Result<char> {
+        self.input.chars().next().ok_or(Error::Eof)
     }
 
-    fn deserialize_block(
-        &mut self,
-        block_type: protocol::BlockType,
-        block: &str,
-    ) -> Result<(), protocol::error::Error> {
-        match block_type {
-            protocol::BlockType::ProtocolPreamble => {
-                self.hub_infos.protocol_preamble = Self::deserialize_protocol_preamble(block)?
-            }
-            protocol::BlockType::DeviceInfo => {
-                self.hub_infos.device_info = Self::deserialize_device_info(block)?
-            }
-            protocol::BlockType::InputLabel => {
-                self.hub_infos.input_labels =
-                    Self::deserialize_labels(block, self.hub_infos.device_info.nb_video_inputs)?
-            }
-            protocol::BlockType::OutputLabel => {
-                self.hub_infos.output_labels =
-                    Self::deserialize_labels(block, self.hub_infos.device_info.nb_video_outputs)?
-            }
-            protocol::BlockType::VideoOutputLocks => {
-                self.hub_infos.video_output_locks = Self::deserialize_output_locks(
-                    block,
-                    self.hub_infos.device_info.nb_video_outputs,
-                )?
-            }
-            protocol::BlockType::VideoOutputRouting => {
-                self.hub_infos.video_output_routing = Self::deserialize_output_routing(
-                    block,
-                    self.hub_infos.device_info.nb_video_outputs,
-                )?
-            }
-            protocol::BlockType::Configuration => {
-                self.hub_infos.configuration = Self::deserialize_configuration(block)?
-            }
-            protocol::BlockType::EndPrelude => (),
-        }
-        Ok(())
+    // Consume the first character in the input.
+    fn next_char(&mut self) -> Result<char> {
+        let ch = self.peek_char()?;
+        self.input = &self.input[ch.len_utf8()..];
+        Ok(ch)
     }
 
-    fn get_block_type(line: &str) -> Option<protocol::BlockType> {
-        match line {
-            line if line.starts_with("PROTOCOL PREAMBLE:") => {
-                Some(protocol::BlockType::ProtocolPreamble)
-            }
-            line if line.starts_with("VIDEOHUB DEVICE:") => Some(protocol::BlockType::DeviceInfo),
-            line if line.starts_with("INPUT LABELS:") => Some(protocol::BlockType::InputLabel),
-            line if line.starts_with("OUTPUT LABELS:") => Some(protocol::BlockType::OutputLabel),
-            line if line.starts_with("VIDEO OUTPUT LOCKS:") => {
-                Some(protocol::BlockType::VideoOutputLocks)
-            }
-            line if line.starts_with("VIDEO OUTPUT ROUTING:") => {
-                Some(protocol::BlockType::VideoOutputRouting)
-            }
-            line if line.starts_with("CONFIGURATION:") => Some(protocol::BlockType::Configuration),
-            line if line.starts_with("END PRELUDE:") => Some(protocol::BlockType::EndPrelude),
-            _ => None,
-        }
-    }
-
-    fn deserialize_protocol_preamble(
-        block: &str,
-    ) -> Result<protocol::ProtocolPreamble, protocol::error::Error> {
-        let mut protocol_preamble: protocol::ProtocolPreamble = Default::default();
-        for line in block.lines() {
-            match Self::get_key_and_value_from_line(line)? {
-                (key, value) if &key == "Version" => {
-                    protocol_preamble.version = value;
-                }
-                _ => (),
-            }
-        }
-        Ok(protocol_preamble)
-    }
-
-    fn deserialize_device_info(
-        block: &str,
-    ) -> Result<protocol::DeviceInfo, protocol::error::Error> {
-        // Parse and extract info for the block VIDEOHUB DEVICE
-        // It is expected that VIDEOHUB DEVICE: label is removed
-        let mut device_info: protocol::DeviceInfo = Default::default();
-        for line in block.lines() {
-            match Self::get_key_and_value_from_line(line)? {
-                (key, value) if &key == "Device present" => {
-                    device_info.device_present = protocol::DevicePresent::from_str(&value)?
-                }
-                (key, value) if &key == "Model name" => {
-                    device_info.model_name = value;
-                }
-                (key, value) if &key == "Friendly name" => {
-                    device_info.friendly_name = value;
-                }
-                (key, value) if &key == "Unique ID" => {
-                    device_info.unique_id = value;
-                }
-                (key, value) if &key == "Video inputs" => {
-                    device_info.nb_video_inputs = value
-                        .parse::<usize>()
-                        .map_err(protocol::error::Error::ParseInt)?;
-                }
-                (key, value) if &key == "Video processing units" => {
-                    device_info.nb_video_processing_units = value
-                        .parse::<usize>()
-                        .map_err(protocol::error::Error::ParseInt)?;
-                }
-                (key, value) if &key == "Video outputs" => {
-                    device_info.nb_video_outputs = value
-                        .parse::<usize>()
-                        .map_err(protocol::error::Error::ParseInt)?;
-                }
-                (key, value) if &key == "Video monitoring outputs" => {
-                    device_info.nb_video_monitoring_outputs = value
-                        .parse::<usize>()
-                        .map_err(protocol::error::Error::ParseInt)?;
-                }
-                (key, value) if &key == "Serial ports" => {
-                    device_info.nb_serial_ports = value
-                        .parse::<usize>()
-                        .map_err(protocol::error::Error::ParseInt)?;
-                }
-                _ => (),
-            }
-        }
-        Ok(device_info)
-    }
-
-    fn deserialize_labels(
-        block: &str,
-        expected_size: usize,
-    ) -> Result<Vec<protocol::Label>, protocol::error::Error> {
-        let seq = Self::deserialize_seq(block, expected_size)?;
-        Ok(seq
-            .iter()
-            .map(|(id, text)| protocol::Label {
-                id: *id,
-                text: text.to_string(),
-            })
-            .collect())
-    }
-
-    fn deserialize_output_locks(
-        block: &str,
-        expected_size: usize,
-    ) -> Result<protocol::OutputLocks, protocol::error::Error> {
-        let seq = Self::deserialize_seq(block, expected_size)?;
-        Ok(seq
-            .iter()
-            .map(|(id, lock_status)| protocol::OutputLock {
-                id: *id,
-                lock_status: protocol::LockStatus::from_str(lock_status).unwrap(),
-            })
-            .collect())
-    }
-
-    fn deserialize_output_routing(
-        block: &str,
-        expected_size: usize,
-    ) -> Result<protocol::OutputRoutings, protocol::error::Error> {
-        let seq = Self::deserialize_seq(block, expected_size)?;
-        let output_routing: protocol::OutputRoutings = seq
-            .iter()
-            .map(|(output_index, input_index_str)| protocol::Route {
-                source: input_index_str.parse::<usize>().unwrap() + 1,
-                destination: *output_index,
-            })
-            .collect();
-        Ok(output_routing)
-    }
-
-    fn deserialize_configuration(
-        block: &str,
-    ) -> Result<protocol::Configuration, protocol::error::Error> {
-        let mut configuration = protocol::Configuration { take_mode: false };
-        for line in block.lines() {
-            match Self::get_key_and_value_from_line(line)? {
-                (key, value) if &key == "Take Mode" => {
-                    configuration.take_mode = value
-                        .parse::<bool>()
-                        .map_err(protocol::error::Error::ParseBool)?
-                }
-                _ => (),
-            }
-        }
-        Ok(configuration)
-    }
-
-    fn deserialize_seq(
-        block: &str,
-        expected_size: usize,
-    ) -> Result<Vec<(usize, String)>, protocol::error::Error> {
-        let mut seq = Vec::with_capacity(expected_size);
-
-        for line in block.lines() {
-            let (index, value) = Self::get_index_and_value_from_line(line)?;
-            seq.push((index + 1, value.trim().to_string()));
-        }
-        Ok(seq)
-    }
-
-    fn get_key_and_value_from_line(line: &str) -> Result<(String, String), protocol::error::Error> {
-        let mut item = line.split(':');
-        let key = item.next();
-        let value = item.next();
-        if let (Some(key), Some(value)) = (key, value) {
-            Ok((key.to_string(), value.trim().to_string()))
+    fn parse_bool(&mut self) -> Result<bool> {
+        if self.input.starts_with("true") {
+            self.input = &self.input["true".len()..];
+            Ok(true)
+        } else if self.input.starts_with("false") {
+            self.input = &self.input["false".len()..];
+            Ok(false)
         } else {
-            Err(protocol::error::Error::ParseValueError)
+            Err(Error::ExpectedBoolean(self.input.to_string()))
         }
     }
 
-    fn get_index_and_value_from_line(
-        line: &str,
-    ) -> Result<(usize, String), protocol::error::Error> {
-        let mut chars = line.chars();
-        let index = chars
-            .by_ref()
-            .take_while(|c| !c.is_ascii_whitespace())
-            .collect::<String>()
-            .parse::<usize>()
-            .map_err(protocol::error::Error::ParseInt)?;
-        let value: String = chars.collect();
-        Ok((index, value))
+    fn parse_unsigned<T>(&mut self) -> Result<T>
+    where
+        T: AddAssign<T> + MulAssign<T> + From<u8>,
+    {
+        let mut int = match self.next_char()? {
+            ch @ '0'..='9' => T::from(ch as u8 - b'0'),
+            _ => {
+                return Err(Error::ExpectedInteger);
+            }
+        };
+        loop {
+            match self.input.chars().next() {
+                Some(ch @ '0'..='9') => {
+                    self.input = &self.input[1..];
+                    int *= T::from(10);
+                    int += T::from(ch as u8 - b'0');
+                }
+                _ => {
+                    return Ok(int);
+                }
+            }
+        }
+    }
+
+    fn parse_string(&mut self) -> Result<&'de str> {
+        match self.input.find(|c| c == ':' || c == '\n') {
+            Some(len) => {
+                let s = &self.input[..len];
+                self.input = &self.input[len..];
+                Ok(s)
+            }
+            None => {
+                // If no delimiter was found take the rest
+                let s = self.input;
+                let len = s.chars().count();
+                self.input = &self.input[len..];
+                Ok(s)
+            }
+        }
     }
 }
 
-#[test]
-fn test_deserialize_device_info() {
-    let block = "\
-        Device present: true\n\
-        Model name: Smart Videohub 12G 40x40\n\
-        Friendly name: SDI Router G-A - Smart Videohub 12G 40 x 40\n\
-        Unique ID: XXXXXX\n\
-        Video inputs: 40\n\
-        Video processing units: 0\n\
-        Video outputs: 40\n\
-        Video monitoring outputs: 0\n\
-        Serial ports: 0\n\
-        ";
-    let expected = protocol::DeviceInfo {
-        device_present: protocol::DevicePresent::Present,
-        model_name: "Smart Videohub 12G 40x40".to_string(),
-        friendly_name: "SDI Router G-A - Smart Videohub 12G 40 x 40".to_string(),
-        unique_id: "XXXXXX".to_string(),
-        nb_video_inputs: 40,
-        nb_video_processing_units: 0,
-        nb_video_outputs: 40,
-        nb_video_monitoring_outputs: 0,
-        nb_serial_ports: 0,
-    };
+impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
+    type Error = Error;
 
-    let device_info = Deserializer::deserialize_device_info(block).unwrap();
+    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        // Unsupported types end-up here
+        Err(Error::UnsupportedType)
+    }
 
-    assert!(device_info == expected)
+    forward_to_deserialize_any! {
+        i8 i16 i32 i64 f32 f64 char bytes byte_buf option
+    }
+
+    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_bool(self.parse_bool()?)
+    }
+
+    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u8(self.parse_unsigned()?)
+    }
+
+    fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u16(self.parse_unsigned()?)
+    }
+
+    fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u32(self.parse_unsigned()?)
+    }
+
+    fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u64(self.parse_unsigned()?)
+    }
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_borrowed_str(self.parse_string()?)
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
+    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_unit()
+    }
+
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_unit(visitor)
+    }
+
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_seq(NewLineSeparated::new(self))
+    }
+
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_seq(SpaceSeparated::new(self))
+    }
+
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        len: usize,
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_tuple(len, visitor)
+    }
+
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_map(NewLineSeparated::new(self))
+    }
+
+    fn deserialize_struct<V>(
+        self,
+        _name: &'static str,
+        _fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_map(visitor)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_enum(self.parse_string()?.into_deserializer())
+    }
+
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
+    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
 }
 
-#[test]
-fn test_deserialize_labels() {
-    let block = "\
-        0 from_RTR_B\n\
-        1 BNC Patch RD1-C - 2\n\
-        2 BNC Patch RD1-C - 3\n\
-        ";
-    let expected = vec![
-        protocol::Label {
-            id: 1,
-            text: "from_RTR_B".to_string(),
-        },
-        protocol::Label {
-            id: 2,
-            text: "BNC Patch RD1-C - 2".to_string(),
-        },
-        protocol::Label {
-            id: 3,
-            text: "BNC Patch RD1-C - 3".to_string(),
-        },
-    ];
-
-    let input_labels = Deserializer::deserialize_labels(block, 3).unwrap();
-    assert!(input_labels == expected);
+struct NewLineSeparated<'a, 'de: 'a> {
+    de: &'a mut Deserializer<'de>,
 }
 
-#[test]
-fn test_deserialize_output_locks() {
-    let block = "\
-        0 U\n\
-        1 O\n\
-        2 F\n\
-        3 L\n\
-        ";
-    let expected = vec![
-        protocol::OutputLock {
-            id: 1,
-            lock_status: protocol::LockStatus::Unlocked,
-        },
-        protocol::OutputLock {
-            id: 2,
-            lock_status: protocol::LockStatus::Owned,
-        },
-        protocol::OutputLock {
-            id: 3,
-            lock_status: protocol::LockStatus::ForceUnlock,
-        },
-        protocol::OutputLock {
-            id: 4,
-            lock_status: protocol::LockStatus::Locked,
-        },
-    ];
-    let input_labels = Deserializer::deserialize_output_locks(block, 4).unwrap();
-    assert!(input_labels == expected);
+impl<'a, 'de> NewLineSeparated<'a, 'de> {
+    fn new(de: &'a mut Deserializer<'de>) -> Self {
+        NewLineSeparated { de }
+    }
 }
 
-#[test]
-fn test_deserialize_output_routing() {
-    let block = "\
-                        0 39\n\
-                        1 1\n\
-                        6 3\n\
-                        0 14\n\
-                        14 15\n\
-                        31 19\n\
-                        32 39\n\
-                        ";
-    let expected = vec![
-        protocol::Route {
-            source: 40,
-            destination: 1,
-        },
-        protocol::Route {
-            source: 2,
-            destination: 2,
-        },
-        protocol::Route {
-            source: 4,
-            destination: 7,
-        },
-        protocol::Route {
-            source: 15,
-            destination: 1,
-        },
-        protocol::Route {
-            source: 16,
-            destination: 15,
-        },
-        protocol::Route {
-            source: 20,
-            destination: 32,
-        },
-        protocol::Route {
-            source: 40,
-            destination: 33,
-        },
-    ];
-    let actual = Deserializer::deserialize_output_routing(block, 7).unwrap();
-    assert!(actual == expected);
+impl<'de, 'a> SeqAccess<'de> for NewLineSeparated<'a, 'de> {
+    type Error = Error;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        // Check if there are no more elements.
+        if self.de.peek_char()? == '\n' {
+            return Ok(None);
+        }
+
+        let result = seed.deserialize(&mut *self.de).map(Some);
+        self.de.next_char()?; // consume the '\n' between elements
+        result
+    }
 }
 
-#[test]
-fn test_deserialize_configuration() {
-    let block = "\
-        Take Mode: true\n\
-        ";
-    let expected = protocol::Configuration { take_mode: true };
+impl<'de, 'a> MapAccess<'de> for NewLineSeparated<'a, 'de> {
+    type Error = Error;
 
-    let acutal = Deserializer::deserialize_configuration(block).unwrap();
-    assert!(acutal == expected);
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        // Check if there are no more entries.
+        if self.de.input.is_empty() || self.de.peek_char()? == '\n' {
+            return Ok(None);
+        }
+        seed.deserialize(&mut *self.de).map(Some)
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        if self.de.next_char()? != ':' {
+            return Err(Error::ExpectedMapColon);
+        }
+
+        self.de.next_char()?; // remove the whitespace between ':' and the value
+        let result = seed.deserialize(&mut *self.de);
+        self.de.next_char()?; // consume the \n
+        result
+    }
+}
+
+struct SpaceSeparated<'a, 'de: 'a> {
+    de: &'a mut Deserializer<'de>,
+}
+
+impl<'a, 'de> SpaceSeparated<'a, 'de> {
+    fn new(de: &'a mut Deserializer<'de>) -> Self {
+        SpaceSeparated { de }
+    }
+}
+
+impl<'de, 'a> SeqAccess<'de> for SpaceSeparated<'a, 'de> {
+    type Error = Error;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        if self.de.input.is_empty() || self.de.peek_char()? == '\n' {
+            return Ok(None);
+        }
+
+        let result = seed.deserialize(&mut *self.de).map(Some);
+        if !self.de.input.is_empty() && self.de.peek_char()? == ' ' {
+            self.de.next_char()?; // consume the whitespace between elements
+        }
+
+        result
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::protocol;
+    #[test]
+    fn test_numbers() {
+        assert_eq!(from_str::<usize>("42").unwrap(), 42);
+        assert_eq!(from_str::<u32>("196").unwrap(), 196);
+    }
+
+    #[test]
+    fn test_strings() {
+        assert_eq!(from_str::<String>("Foo").unwrap(), "Foo".to_string());
+        assert_eq!(from_str::<String>("Foo\n").unwrap(), "Foo".to_string());
+        assert_eq!(from_str::<String>("Foo:").unwrap(), "Foo".to_string());
+    }
+
+    #[test]
+    fn test_seq() {
+        let expected = vec![1_u32, 2, 3];
+        let s = "1\n2\n3\n\n";
+        let result: Vec<u32> = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_tuple() {
+        let expected = (1_u32, 2_u32, 3_u32, 5_u32);
+        let s = "1 2 3 5";
+        let result: (u32, u32, u32, u32) = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_struct_tuple() {
+        #[derive(Deserialize, Debug, PartialEq, Eq)]
+        struct Foo(usize, String);
+
+        let expected = Foo(2, "Bar 2".to_string());
+        let s = "2 Bar 2";
+        let result: Foo = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_protocol_preamble() {
+        let expected = protocol::ProtocolPreamble {
+            version: "2.3".to_string(),
+        };
+        let s = "Version: 2.3\n\n";
+        let result: protocol::ProtocolPreamble = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_device_info() {
+        let expected = protocol::DeviceInfo {
+            device_present: protocol::DevicePresent::Present,
+            model_name: "Some model name".to_string(),
+            friendly_name: "Bar".to_string(),
+            unique_id: "XXXX".to_string(),
+            nb_video_inputs: 40,
+            nb_video_processing_units: 2,
+            nb_video_outputs: 40,
+            nb_video_monitoring_outputs: 1,
+            nb_serial_ports: 0,
+        };
+
+        let s = "Device present: true\n\
+                       Model name: Some model name\n\
+                       Friendly name: Bar\n\
+                       Unique ID: XXXX\n\
+                       Video inputs: 40\n\
+                       Video processing units: 2\n\
+                       Video outputs: 40\n\
+                       Video monitoring outputs: 1\n\
+                       Serial ports: 0\n\n";
+        let result: protocol::DeviceInfo = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_input_labels() {
+        let expected = protocol::InputLabels(vec![
+            protocol::Label(2, "Bar 2".to_string()),
+            protocol::Label(3, "Foo 3".to_string()),
+        ]);
+        let s = "2 Bar 2\n3 Foo 3\n\n";
+        let result: protocol::InputLabels = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_output_labels() {
+        let expected = protocol::OutputLabels(vec![
+            protocol::Label(2, "Bar 2".to_string()),
+            protocol::Label(3, "Foo 3".to_string()),
+        ]);
+        let s = "2 Bar 2\n3 Foo 3\n\n";
+        let result: protocol::OutputLabels = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_output_locks() {
+        let expected = protocol::OutputLocks(vec![
+            protocol::OutputLock(2, protocol::LockStatus::Locked),
+            protocol::OutputLock(3, protocol::LockStatus::Unlocked),
+            protocol::OutputLock(39, protocol::LockStatus::Owned),
+            protocol::OutputLock(0, protocol::LockStatus::ForceUnlock),
+        ]);
+        let s = "2 L\n3 U\n39 O\n0 F\n\n";
+        let result: protocol::OutputLocks = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_output_routings() {
+        let expected = protocol::OutputRoutings(vec![
+            protocol::Route(39, 1),
+            protocol::Route(15, 13),
+            protocol::Route(12, 6),
+            protocol::Route(3, 28),
+            protocol::Route(97, 45),
+        ]);
+        let s = "39 1\n15 13\n12 6\n3 28\n97 45\n\n";
+        let result: protocol::OutputRoutings = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_configuration() {
+        let expected = protocol::Configuration { take_mode: true };
+        let s = "Take Mode: true\n\n";
+        let result: protocol::Configuration = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_end_prelude() {
+        let expected = protocol::EndPrelude;
+        let s = "\n";
+        let result: protocol::EndPrelude = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_hub_info() {
+        use protocol::*;
+
+        let expected = HubInfo {
+            protocol_preamble: ProtocolPreamble {
+                version: "2.3".to_string(),
+            },
+            device_info: DeviceInfo {
+                device_present: DevicePresent::Present,
+                model_name: "Some model name".to_string(),
+                friendly_name: "Bar".to_string(),
+                unique_id: "XXXX".to_string(),
+                nb_video_inputs: 40,
+                nb_video_processing_units: 2,
+                nb_video_outputs: 40,
+                nb_video_monitoring_outputs: 1,
+                nb_serial_ports: 0,
+            },
+            input_labels: InputLabels(vec![
+                Label(2, "Bar 2".to_string()),
+                Label(3, "Foo 3".to_string()),
+            ]),
+            output_labels: OutputLabels(vec![
+                Label(2, "Bar 2".to_string()),
+                Label(3, "Foo 3".to_string()),
+            ]),
+            video_output_locks: OutputLocks(vec![
+                OutputLock(2, LockStatus::Locked),
+                OutputLock(3, LockStatus::Unlocked),
+                OutputLock(39, LockStatus::Owned),
+                OutputLock(0, LockStatus::ForceUnlock),
+            ]),
+            video_output_routing: OutputRoutings(vec![
+                Route(39, 1),
+                Route(15, 13),
+                Route(12, 6),
+                Route(3, 28),
+                Route(97, 45),
+            ]),
+            configuration: Configuration { take_mode: true },
+            end_prelude: EndPrelude,
+        };
+
+        let s = "PROTOCOL PREAMBLE:\n\
+                       Version: 2.3\n\
+                       \n\
+                       VIDEOHUB DEVICE:\n\
+                       Device present: true\n\
+                       Model name: Some model name\n\
+                       Friendly name: Bar\n\
+                       Unique ID: XXXX\n\
+                       Video inputs: 40\n\
+                       Video processing units: 2\n\
+                       Video outputs: 40\n\
+                       Video monitoring outputs: 1\n\
+                       Serial ports: 0\n\
+                       \n\
+                       INPUT LABELS:\n\
+                       2 Bar 2\n\
+                       3 Foo 3\n\
+                       \n\
+                       OUTPUT LABELS:\n\
+                       2 Bar 2\n\
+                       3 Foo 3\n\
+                       \n\
+                       VIDEO OUTPUT LOCKS:\n\
+                       2 L\n\
+                       3 U\n\
+                       39 O\n\
+                       0 F\n\
+                       \n\
+                       VIDEO OUTPUT ROUTING:\n\
+                       39 1\n\
+                       15 13\n\
+                       12 6\n\
+                       3 28\n\
+                       97 45\n\
+                       \n\
+                       CONFIGURATION:\n\
+                       Take Mode: true\n\
+                       \n\
+                       END PRELUDE:\n\
+                       \n";
+        let result: HubInfo = from_str(s).unwrap();
+        assert_eq!(result, expected);
+    }
 }

@@ -8,3 +8,10 @@ videohub = { path = "../" }
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+web-sys = { version = "0.3.58", features = [
+  "CssStyleDeclaration",
+  "HtmlElement",
+  "HtmlButtonElement",
+  "console",
+] }
+anyhow = "1"
