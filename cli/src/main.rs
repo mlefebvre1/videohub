@@ -7,10 +7,7 @@ use log::info;
 use std::{net::Ipv4Addr, str::FromStr};
 use tera::Tera;
 use videohub::{
-    protocol::{
-        BlockType, HubInfo, InputLabels, Label, LockStatus, OutputLabels, OutputLock, OutputLocks,
-        OutputRoutings, Route,
-    },
+    protocol::{BlockType, HubInfo, Label, LockStatus, OutputLock, Route},
     Hub, DEFAULT_DEVICE_PORT,
 };
 
@@ -24,33 +21,29 @@ fn main() -> Result<()> {
     let videohub = Hub::new(ipv4_addr, DEFAULT_DEVICE_PORT);
 
     if let Some(Label(id, text)) = args.input_label {
-        let block = BlockType::InputLabels(InputLabels(vec![Label(id, text.clone())]));
+        let block = BlockType::InputLabels(vec![Label(id, text.clone())]);
 
         info!("Changing label of input port {} to {}", id, text);
         videohub.write(block)?;
     }
     if let Some(Label(id, text)) = args.output_label {
-        let block = BlockType::OutputLabels(OutputLabels(vec![Label(id, text.clone())]));
+        let block = BlockType::OutputLabels(vec![Label(id, text.clone())]);
         info!("Changing label of output port {} to {}", id, text);
         videohub.write(block)?;
     }
     if let Some(Route(dst, src)) = args.output_route {
-        let block = BlockType::VideoOutputRouting(OutputRoutings(vec![Route(dst, src)]));
+        let block = BlockType::VideoOutputRouting(vec![Route(dst, src)]);
 
         info!("Routing -- Input={} to Output={}", src, dst);
         videohub.write(block)?;
     }
     if let Some(index) = args.unlock {
-        let block = BlockType::VideoOutputLocks(OutputLocks(vec![OutputLock(
-            index,
-            LockStatus::ForceUnlock,
-        )]));
+        let block = BlockType::VideoOutputLocks(vec![OutputLock(index, LockStatus::ForceUnlock)]);
 
         videohub.write(block)?;
     }
     if let Some(index) = args.lock {
-        let block =
-            BlockType::VideoOutputLocks(OutputLocks(vec![OutputLock(index, LockStatus::Locked)]));
+        let block = BlockType::VideoOutputLocks(vec![OutputLock(index, LockStatus::Locked)]);
         videohub.write(block)?;
     }
     if args.display {

@@ -11,14 +11,14 @@ pub mod ser;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "PROTOCOL PREAMBLE:\n")]
+#[serde(rename = "")]
 pub struct ProtocolPreamble {
     #[serde(rename = "Version")]
     pub version: String,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "VIDEOHUB DEVICE:\n")]
+#[serde(rename = "")]
 pub struct DeviceInfo {
     #[serde(rename = "Device present")]
     pub device_present: DevicePresent,
@@ -57,20 +57,8 @@ impl Default for DevicePresent {
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "INPUT LABELS:\n")]
-pub struct InputLabels(pub Vec<Label>);
-
-#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "OUTPUT LABELS:\n")]
-pub struct OutputLabels(pub Vec<Label>);
-
-#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename = "")]
 pub struct Label(pub usize, pub String); // (id, text)
-
-#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "VIDEO OUTPUT LOCKS:\n")]
-pub struct OutputLocks(pub Vec<OutputLock>);
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename = "")]
@@ -95,23 +83,19 @@ impl Default for LockStatus {
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "VIDEO OUTPUT ROUTING:\n")]
-pub struct OutputRoutings(pub Vec<Route>);
-
-#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename = "")]
 pub struct Route(pub usize, pub usize); // (dst, src)
 
 // Configuraton
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "CONFIGURATION:\n")]
+#[serde(rename = "")]
 pub struct Configuration {
     #[serde(rename = "Take Mode")]
     pub take_mode: bool,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
-#[serde(rename = "END PRELUDE:\n")]
+#[serde(rename = "")]
 pub struct EndPrelude;
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
@@ -121,13 +105,13 @@ pub struct HubInfo {
     #[serde(rename = "VIDEOHUB DEVICE")]
     pub device_info: DeviceInfo,
     #[serde(rename = "INPUT LABELS")]
-    pub input_labels: InputLabels,
+    pub input_labels: Vec<Label>,
     #[serde(rename = "OUTPUT LABELS")]
-    pub output_labels: OutputLabels,
+    pub output_labels: Vec<Label>,
     #[serde(rename = "VIDEO OUTPUT LOCKS")]
-    pub video_output_locks: OutputLocks,
+    pub video_output_locks: Vec<OutputLock>,
     #[serde(rename = "VIDEO OUTPUT ROUTING")]
-    pub video_output_routing: OutputRoutings,
+    pub video_output_routing: Vec<Route>,
     #[serde(rename = "CONFIGURATION")]
     pub configuration: Configuration,
     #[serde(rename = "END PRELUDE")]
@@ -136,13 +120,21 @@ pub struct HubInfo {
 
 #[derive(Debug, Clone, Serialize)]
 pub enum BlockType {
+    #[serde(rename(serialize = "PROTOCOL PREAMBLE:\n"))]
     ProtocolPreamble(ProtocolPreamble),
+    #[serde(rename(serialize = "VIDEOHUB DEVICE:\n"))]
     DeviceInfo(DeviceInfo),
-    InputLabels(InputLabels),
-    OutputLabels(OutputLabels),
-    VideoOutputLocks(OutputLocks),
-    VideoOutputRouting(OutputRoutings),
+    #[serde(rename(serialize = "INPUT LABELS:\n"))]
+    InputLabels(Vec<Label>),
+    #[serde(rename(serialize = "OUTPUT LABELS:\n"))]
+    OutputLabels(Vec<Label>),
+    #[serde(rename(serialize = "VIDEO OUTPUT LOCKS:\n"))]
+    VideoOutputLocks(Vec<OutputLock>),
+    #[serde(rename(serialize = "VIDEO OUTPUT ROUTING:\n"))]
+    VideoOutputRouting(Vec<Route>),
+    #[serde(rename(serialize = "CONFIGURATION:\n"))]
     Configuration(Configuration),
+    #[serde(rename(serialize = "END PRELUDE:\n"))]
     EndPrelude(EndPrelude),
 }
 

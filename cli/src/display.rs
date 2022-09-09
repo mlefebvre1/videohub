@@ -3,14 +3,12 @@ use std::collections::HashMap;
 use itertools::izip;
 use serde_json::value::{from_value, to_value, Value};
 use tera::{Error, Result};
-use videohub::protocol::{
-    InputLabels, Label, OutputLabels, OutputLock, OutputLocks, OutputRoutings, Route,
-};
+use videohub::protocol::{Label, OutputLock, Route};
 
 pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
     let labels = match args.get("input_labels") {
-        Some(val) => match from_value::<InputLabels>(val.clone()) {
-            Ok(v) => v.0,
+        Some(val) => match from_value::<Vec<Label>>(val.clone()) {
+            Ok(v) => v,
             Err(_) => {
                 return Err(Error::msg(String::new()));
             }
@@ -34,8 +32,8 @@ pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
 
 pub fn format_output_labels(args: &HashMap<String, Value>) -> Result<Value> {
     let output_label = match args.get("output_labels") {
-        Some(val) => match from_value::<OutputLabels>(val.clone()) {
-            Ok(v) => v.0,
+        Some(val) => match from_value::<Vec<Label>>(val.clone()) {
+            Ok(v) => v,
             Err(_) => {
                 return Err(Error::msg(""));
             }
@@ -45,8 +43,8 @@ pub fn format_output_labels(args: &HashMap<String, Value>) -> Result<Value> {
         }
     };
     let video_output_locks = match args.get("video_output_locks") {
-        Some(val) => match from_value::<OutputLocks>(val.clone()) {
-            Ok(v) => v.0,
+        Some(val) => match from_value::<Vec<OutputLock>>(val.clone()) {
+            Ok(v) => v,
             Err(_) => {
                 return Err(Error::msg(""));
             }
@@ -56,8 +54,8 @@ pub fn format_output_labels(args: &HashMap<String, Value>) -> Result<Value> {
         }
     };
     let video_output_routing = match args.get("video_output_routing") {
-        Some(val) => match from_value::<OutputRoutings>(val.clone()) {
-            Ok(v) => v.0,
+        Some(val) => match from_value::<Vec<Route>>(val.clone()) {
+            Ok(v) => v,
             Err(_) => {
                 return Err(Error::msg(""));
             }

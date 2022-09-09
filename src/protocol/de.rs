@@ -331,7 +331,8 @@ impl<'de, 'a> SeqAccess<'de> for SpaceSeparated<'a, 'de> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::protocol;
+    use crate::protocol::*;
+
     #[test]
     fn test_numbers() {
         assert_eq!(from_str::<usize>("42").unwrap(), 42);
@@ -374,18 +375,18 @@ mod test {
 
     #[test]
     fn test_protocol_preamble() {
-        let expected = protocol::ProtocolPreamble {
+        let expected = ProtocolPreamble {
             version: "2.3".to_string(),
         };
         let s = "Version: 2.3\n\n";
-        let result: protocol::ProtocolPreamble = from_str(s).unwrap();
+        let result: ProtocolPreamble = from_str(s).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_device_info() {
-        let expected = protocol::DeviceInfo {
-            device_present: protocol::DevicePresent::Present,
+        let expected = DeviceInfo {
+            device_present: DevicePresent::Present,
             model_name: "Some model name".to_string(),
             friendly_name: "Bar".to_string(),
             unique_id: "XXXX".to_string(),
@@ -405,79 +406,63 @@ mod test {
                        Video outputs: 40\n\
                        Video monitoring outputs: 1\n\
                        Serial ports: 0\n\n";
-        let result: protocol::DeviceInfo = from_str(s).unwrap();
+        let result: DeviceInfo = from_str(s).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_input_labels() {
-        let expected = protocol::InputLabels(vec![
-            protocol::Label(2, "Bar 2".to_string()),
-            protocol::Label(3, "Foo 3".to_string()),
-        ]);
+    fn test_labels() {
+        let expected = vec![Label(2, "Bar 2".to_string()), Label(3, "Foo 3".to_string())];
         let s = "2 Bar 2\n3 Foo 3\n\n";
-        let result: protocol::InputLabels = from_str(s).unwrap();
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_output_labels() {
-        let expected = protocol::OutputLabels(vec![
-            protocol::Label(2, "Bar 2".to_string()),
-            protocol::Label(3, "Foo 3".to_string()),
-        ]);
-        let s = "2 Bar 2\n3 Foo 3\n\n";
-        let result: protocol::OutputLabels = from_str(s).unwrap();
+        let result: Vec<Label> = from_str(s).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_output_locks() {
-        let expected = protocol::OutputLocks(vec![
-            protocol::OutputLock(2, protocol::LockStatus::Locked),
-            protocol::OutputLock(3, protocol::LockStatus::Unlocked),
-            protocol::OutputLock(39, protocol::LockStatus::Owned),
-            protocol::OutputLock(0, protocol::LockStatus::ForceUnlock),
-        ]);
+        let expected = vec![
+            OutputLock(2, LockStatus::Locked),
+            OutputLock(3, LockStatus::Unlocked),
+            OutputLock(39, LockStatus::Owned),
+            OutputLock(0, LockStatus::ForceUnlock),
+        ];
         let s = "2 L\n3 U\n39 O\n0 F\n\n";
-        let result: protocol::OutputLocks = from_str(s).unwrap();
+        let result: Vec<OutputLock> = from_str(s).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_output_routings() {
-        let expected = protocol::OutputRoutings(vec![
-            protocol::Route(39, 1),
-            protocol::Route(15, 13),
-            protocol::Route(12, 6),
-            protocol::Route(3, 28),
-            protocol::Route(97, 45),
-        ]);
+        let expected = vec![
+            Route(39, 1),
+            Route(15, 13),
+            Route(12, 6),
+            Route(3, 28),
+            Route(97, 45),
+        ];
         let s = "39 1\n15 13\n12 6\n3 28\n97 45\n\n";
-        let result: protocol::OutputRoutings = from_str(s).unwrap();
+        let result: Vec<Route> = from_str(s).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_configuration() {
-        let expected = protocol::Configuration { take_mode: true };
+        let expected = Configuration { take_mode: true };
         let s = "Take Mode: true\n\n";
-        let result: protocol::Configuration = from_str(s).unwrap();
+        let result: Configuration = from_str(s).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_end_prelude() {
-        let expected = protocol::EndPrelude;
+        let expected = EndPrelude;
         let s = "\n";
-        let result: protocol::EndPrelude = from_str(s).unwrap();
+        let result: EndPrelude = from_str(s).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_hub_info() {
-        use protocol::*;
-
         let expected = HubInfo {
             protocol_preamble: ProtocolPreamble {
                 version: "2.3".to_string(),
@@ -493,27 +478,21 @@ mod test {
                 nb_video_monitoring_outputs: 1,
                 nb_serial_ports: 0,
             },
-            input_labels: InputLabels(vec![
-                Label(2, "Bar 2".to_string()),
-                Label(3, "Foo 3".to_string()),
-            ]),
-            output_labels: OutputLabels(vec![
-                Label(2, "Bar 2".to_string()),
-                Label(3, "Foo 3".to_string()),
-            ]),
-            video_output_locks: OutputLocks(vec![
+            input_labels: vec![Label(2, "Bar 2".to_string()), Label(3, "Foo 3".to_string())],
+            output_labels: vec![Label(2, "Bar 2".to_string()), Label(3, "Foo 3".to_string())],
+            video_output_locks: vec![
                 OutputLock(2, LockStatus::Locked),
                 OutputLock(3, LockStatus::Unlocked),
                 OutputLock(39, LockStatus::Owned),
                 OutputLock(0, LockStatus::ForceUnlock),
-            ]),
-            video_output_routing: OutputRoutings(vec![
+            ],
+            video_output_routing: vec![
                 Route(39, 1),
                 Route(15, 13),
                 Route(12, 6),
                 Route(3, 28),
                 Route(97, 45),
-            ]),
+            ],
             configuration: Configuration { take_mode: true },
             end_prelude: EndPrelude,
         };

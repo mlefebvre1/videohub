@@ -10,21 +10,18 @@ pub enum Error {
     DevicePresentErr(String),
     #[error("The string {0} can't be converted to a valid LockStatus variant")]
     LockStatusErr(String),
-    // Serializer errors
     #[error("Protocol serialization error")]
     SerializeErr(String),
     #[error("The type {0} you attempt to serialize is not supported")]
     SerializeNotSupportedTypeErr(String),
     #[error("The Block type {0} you attempt to serialize is not supported")]
     SerializeNotSupportedBlockTypeErr(String),
-    // Deserializer errors
     #[error("Protocol deserialization error")]
     DeserializeErr(String),
     #[error("Expected semi-colons to delimit key, but found nothing")]
     ExpectedKey,
     #[error("Did not succesfully deserialize, because there are remaining characters")]
     TrailingCharacters,
-    // Below is from deserialize json..
     #[error("Attempted to consume a character, but the buffer ios empty")]
     Eof,
     #[error("Expected to deserialize {0} to boolean")]

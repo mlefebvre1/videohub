@@ -2447,6 +2447,7 @@ name = "videohub-rest"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "itertools",
  "rocket",
  "serde",
  "serde_json",

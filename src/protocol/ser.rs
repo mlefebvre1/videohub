@@ -137,12 +137,13 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         value: &T,
     ) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
+        self.output += variant;
         value.serialize(&mut *self)?;
         Ok(())
     }
@@ -347,11 +348,11 @@ impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::protocol;
+    use crate::protocol::*;
 
     #[test]
     fn test_protocol_preamble() {
-        let preamble = protocol::BlockType::ProtocolPreamble(protocol::ProtocolPreamble {
+        let preamble = BlockType::ProtocolPreamble(ProtocolPreamble {
             version: "2.3".to_string(),
         });
         assert_eq!(
@@ -362,8 +363,8 @@ mod test {
 
     #[test]
     fn test_device_info() {
-        let device_info = protocol::BlockType::DeviceInfo(protocol::DeviceInfo {
-            device_present: protocol::DevicePresent::Present,
+        let device_info = BlockType::DeviceInfo(DeviceInfo {
+            device_present: DevicePresent::Present,
             model_name: "Foo".to_string(),
             friendly_name: "Bar".to_string(),
             unique_id: "XXXX".to_string(),
@@ -389,49 +390,44 @@ mod test {
 
     #[test]
     fn test_input_labels() {
-        let labels = protocol::BlockType::InputLabels(protocol::InputLabels(vec![
-            protocol::Label(2, "Bar 2".to_string()),
-            protocol::Label(3, "Foo 3".to_string()),
-        ]));
+        let labels = BlockType::InputLabels(vec![
+            Label(2, "Bar 2".to_string()),
+            Label(3, "Foo 3".to_string()),
+        ]);
         let result = to_string(&labels).unwrap();
         assert_eq!(&result, "INPUT LABELS:\n2 Bar 2\n3 Foo 3\n\n");
     }
 
     #[test]
     fn test_output_labels() {
-        let labels = protocol::BlockType::OutputLabels(protocol::OutputLabels(vec![
-            protocol::Label(2, "Bar 2".to_string()),
-            protocol::Label(3, "Foo 3".to_string()),
-        ]));
+        let labels = BlockType::OutputLabels(vec![
+            Label(2, "Bar 2".to_string()),
+            Label(3, "Foo 3".to_string()),
+        ]);
         let result = to_string(&labels).unwrap();
         assert_eq!(&result, "OUTPUT LABELS:\n2 Bar 2\n3 Foo 3\n\n");
     }
 
     #[test]
     fn test_output_locks() {
-        let labels = protocol::BlockType::VideoOutputLocks(protocol::OutputLocks(vec![
-            protocol::OutputLock(30, protocol::LockStatus::Locked),
-            protocol::OutputLock(24, protocol::LockStatus::Unlocked),
-        ]));
+        let labels = BlockType::VideoOutputLocks(vec![
+            OutputLock(30, LockStatus::Locked),
+            OutputLock(24, LockStatus::Unlocked),
+        ]);
         let result = to_string(&labels).unwrap();
         assert_eq!(&result, "VIDEO OUTPUT LOCKS:\n30 L\n24 U\n\n");
     }
 
     #[test]
     fn test_output_routing() {
-        let labels = protocol::BlockType::VideoOutputRouting(protocol::OutputRoutings(vec![
-            protocol::Route(0, 5),
-            protocol::Route(36, 6),
-            protocol::Route(13, 13),
-        ]));
+        let labels = BlockType::VideoOutputRouting(vec![Route(0, 5), Route(36, 6), Route(13, 13)]);
         let result = to_string(&labels).unwrap();
-        assert_eq!(&result, "VIDEO OUTPUT ROUTINGS:\n0 5\n36 6\n13 13\n\n");
+        assert_eq!(&result, "VIDEO OUTPUT ROUTING:\n0 5\n36 6\n13 13\n\n");
     }
 
     #[test]
     fn test_configuration() {
-        let config_true =
-            protocol::BlockType::Configuration(protocol::Configuration { take_mode: true });
+        let config_true = BlockType::Configuration(Configuration { take_mode: true });
         assert_eq!(
             &to_string(&config_true).unwrap(),
             "CONFIGURATION:\nTake Mode: true\n\n"
@@ -440,13 +436,13 @@ mod test {
 
     #[test]
     fn test_end_prelude() {
-        let end = protocol::BlockType::EndPrelude(protocol::EndPrelude);
+        let end = BlockType::EndPrelude(EndPrelude);
         assert_eq!(&to_string(&end).unwrap(), "END PRELUDE:\n\n");
     }
 
     #[test]
     fn test_enum() {
-        let lock_status = protocol::LockStatus::Unlocked;
+        let lock_status = LockStatus::Unlocked;
         let result = to_string(&lock_status).unwrap();
         assert_eq!(result, "U");
     }
