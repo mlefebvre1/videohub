@@ -1,7 +1,9 @@
-use super::fetch::{fetch_input_labels, fetch_output_labels, fetch_output_routings};
+use super::fetch::{fetch_input_ports, fetch_output_ports, InputPort, OutputPort};
+
+// use videohub_rest::{InputPort, OutputPort};
 
 use gloo::timers::callback::Interval;
-use videohub::protocol::{InputLabel, OutputLabel, OutputRoutings};
+
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use yew::prelude::*;
 
@@ -13,9 +15,8 @@ const ROUTED_TO_INPUT_BUTTON_BG_COLOR: &str = "rgb(214, 146, 20)";
 pub enum Msg {
     InPortClicked(usize),
     OutPortClicked(usize),
-    FetchInputLabels(InputLabel),
-    FetchOutputLabels(OutputLabel),
-    FetchOutputRoutings(OutputRoutings),
+    FetchInputPorts(Vec<InputPort>),
+    FetchOutputPorts(Vec<OutputPort>),
     FetchVideohubInfo,
     Route,
 }
@@ -23,13 +24,12 @@ pub enum Msg {
 pub struct Model {
     current_in_port_selected: Option<usize>,
     current_out_port_selected: Option<usize>,
-    input_labels: Option<InputLabel>,
-    output_labels: Option<OutputLabel>,
-    routes: Option<OutputRoutings>,
+    input_ports: Option<Vec<InputPort>>,
+    output_ports: Option<Vec<OutputPort>>,
     _interval_handle: Interval,
 }
 
-#[derive(Properties, PartialEq)]
+#[derive(Properties, PartialEq, Eq)]
 pub struct Props {
     pub nb_input_ports: usize,
     pub nb_output_ports: usize,
@@ -50,9 +50,8 @@ impl Component for Model {
         Self {
             current_in_port_selected: None,
             current_out_port_selected: None,
-            input_labels: None,
-            output_labels: None,
-            routes: None,
+            input_ports: None,
+            output_ports: None,
             _interval_handle: fetch_videohub_info_interval_handle,
         }
     }
@@ -79,22 +78,17 @@ impl Component for Model {
                 self.set_focused_output_button_color(ctx);
                 true
             }
-            Msg::FetchInputLabels(labels) => {
-                self.input_labels = Some(labels);
+            Msg::FetchInputPorts(input_ports) => {
+                self.input_ports = Some(input_ports);
                 true
             }
-            Msg::FetchOutputLabels(labels) => {
-                self.output_labels = Some(labels);
-                true
-            }
-            Msg::FetchOutputRoutings(routes) => {
-                self.routes = Some(routes);
+            Msg::FetchOutputPorts(output_ports) => {
+                self.output_ports = Some(output_ports);
                 true
             }
             Msg::FetchVideohubInfo => {
-                fetch_input_labels(ctx);
-                fetch_output_labels(ctx);
-                fetch_output_routings(ctx);
+                fetch_input_ports(ctx);
+                fetch_output_ports(ctx);
                 true
             }
             Msg::Route => {
@@ -111,14 +105,26 @@ impl Component for Model {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
 
-        let input_labels = match self.input_labels.clone() {
+        let input_ports = match self.input_ports.clone() {
             Some(labels) => labels,
             None => vec![],
         };
 
-        let output_labels = match self.output_labels.clone() {
+        let output_ports = match self.output_ports.clone() {
             Some(labels) => labels,
             None => vec![],
+        };
+
+        let input_port = if let Some(port) = self.current_in_port_selected {
+            format!("{port}")
+        } else {
+            "None".to_string()
+        };
+
+        let output_port = if let Some(port) = self.current_out_port_selected {
+            format!("{port}")
+        } else {
+            "None".to_string()
         };
 
         html! {
@@ -127,8 +133,8 @@ impl Component for Model {
                     <h1 style={"text-align: center"}>{"Input Ports"}</h1>
                     {
                         html!{
-                            for input_labels.into_iter().map(|label| html!(<button id={format!("in_button_{}", label.id)}
-                             onclick={link.callback(move |_| Msg::InPortClicked(label.id))} >{format!("IN{}\n{}", label.id, label.text)}</button>))
+                            for input_ports.into_iter().map(|input_port| html!(<button id={format!("in_button_{}", input_port.id)}
+                             onclick={link.callback(move |_| Msg::InPortClicked(input_port.id))} >{format!("IN{}\n{}", input_port.id, input_port.label)}</button>))
                         }
                     }
                 </div>
@@ -136,8 +142,8 @@ impl Component for Model {
                     <h1 style={"text-align: center"}>{"Output Ports"}</h1>
                     {
                         html!{
-                            for output_labels.into_iter().map(|label| html!(<button id={format!("out_button_{}", label.id)}
-                             onclick={link.callback(move |_| Msg::OutPortClicked(label.id))} >{format!("OUT{}\n{}", label.id, label.text)}</button>))
+                            for output_ports.into_iter().map(|output_port| html!(<button id={format!("out_button_{}", output_port.id)}
+                             onclick={link.callback(move |_| Msg::OutPortClicked(output_port.id))} >{format!("OUT{}\n{}", output_port.id, output_port.label.unwrap())}</button>))
                         }
                     }
                 </div>
@@ -162,11 +168,13 @@ impl Model {
 
     fn set_input_routed_to_output_color(&self, _ctx: &Context<Self>) {
         if let Some(output_id) = self.current_out_port_selected {
-            let routes = self.routes.as_ref().unwrap();
-            let matched_routes = routes.iter().filter(|route| route.destination == output_id);
-            for route in matched_routes {
+            let output_ports = self.output_ports.as_ref().unwrap();
+            let output_ports_matched = output_ports
+                .iter()
+                .filter(|output_port| output_port.input_port.unwrap() == output_id);
+            for output_port in output_ports_matched {
                 Self::set_button_color(
-                    &format!("in_button_{}", route.source),
+                    &format!("in_button_{}", output_port.input_port.unwrap()),
                     ROUTED_TO_OUTPUT_BUTTON_BG_COLOR,
                 )
             }
@@ -174,11 +182,13 @@ impl Model {
     }
     fn set_output_routed_to_input_color(&self, _ctx: &Context<Self>) {
         if let Some(input_id) = self.current_in_port_selected {
-            let routes = self.routes.as_ref().unwrap();
-            let matched_routes = routes.iter().filter(|route| route.source == input_id);
-            for route in matched_routes {
+            let output_ports = self.output_ports.as_ref().unwrap();
+            let output_ports_matched = output_ports
+                .iter()
+                .filter(|output_port| output_port.id == input_id);
+            for output_port in output_ports_matched {
                 Self::set_button_color(
-                    &format!("out_button_{}", route.destination),
+                    &format!("out_button_{}", output_port.id),
                     ROUTED_TO_INPUT_BUTTON_BG_COLOR,
                 )
             }
@@ -196,7 +206,7 @@ impl Model {
     }
 
     fn set_default_buttons_colors(id_prefix: &str, nb_ports: usize) {
-        for i in 1..=nb_ports {
+        for i in 0..nb_ports {
             Self::set_button_color(&format!("{id_prefix}{i}"), DEFAULT_BUTTON_BG_COLOR)
         }
     }

@@ -5,36 +5,49 @@
 /// See the document for more information
 ///
 pub mod de;
-mod error;
+pub mod error;
 pub mod ser;
 
-use std::{fmt::Display, str::FromStr};
-
-use log::warn;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(rename = "")]
 pub struct ProtocolPreamble {
+    #[serde(rename = "Version")]
     pub version: String,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub enum DevicePresent {
-    Present,
-    NotPresent,
-    NeedUpdate,
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(rename = "")]
+pub struct DeviceInfo {
+    #[serde(rename = "Device present")]
+    pub device_present: DevicePresent,
+    #[serde(rename = "Model name")]
+    pub model_name: String,
+    #[serde(rename = "Friendly name")]
+    pub friendly_name: String,
+    #[serde(rename = "Unique ID")]
+    pub unique_id: String,
+    #[serde(rename = "Video inputs")]
+    pub nb_video_inputs: usize,
+    #[serde(rename = "Video processing units")]
+    pub nb_video_processing_units: usize,
+    #[serde(rename = "Video outputs")]
+    pub nb_video_outputs: usize,
+    #[serde(rename = "Video monitoring outputs")]
+    pub nb_video_monitoring_outputs: usize,
+    #[serde(rename = "Serial ports")]
+    pub nb_serial_ports: usize,
 }
 
-impl FromStr for DevicePresent {
-    type Err = error::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "true" => Ok(DevicePresent::Present),
-            "false" => Ok(DevicePresent::NotPresent),
-            "needs_update" => Ok(DevicePresent::NeedUpdate),
-            _ => Err(error::Error::DevicePresent),
-        }
-    }
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub enum DevicePresent {
+    #[serde(rename = "true")]
+    Present,
+    #[serde(rename = "false")]
+    NotPresent,
+    #[serde(rename = "needs_update")]
+    NeedUpdate,
 }
 
 impl Default for DevicePresent {
@@ -43,57 +56,113 @@ impl Default for DevicePresent {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct DeviceInfo {
-    pub device_present: DevicePresent,
-    pub model_name: String,
-    pub friendly_name: String,
-    pub unique_id: String,
-    pub nb_video_inputs: usize,
-    pub nb_video_processing_units: usize,
-    pub nb_video_outputs: usize,
-    pub nb_video_monitoring_outputs: usize,
-    pub nb_serial_ports: usize,
-}
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(rename = "")]
+pub struct Label(pub usize, pub String); // (id, text)
 
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct Label {
-    pub id: usize,
-    pub text: String,
-}
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(rename = "")]
+pub struct OutputLock(pub usize, pub LockStatus); // (id, lock_status)
 
-// pub type Label = String;
-
-pub type InputLabel = Vec<Label>;
-
-pub type OutputLabel = Vec<Label>;
-
-pub enum IOLabel {
-    Input(InputLabel),
-    Output(OutputLabel),
-}
-
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum LockStatus {
+    #[serde(rename = "F")]
     ForceUnlock,
+    #[serde(rename = "L")]
     Locked,
+    #[serde(rename = "O")]
     Owned,
+    #[serde(rename = "U")]
     Unlocked,
 }
 
-impl FromStr for LockStatus {
-    type Err = error::Error;
+impl Default for LockStatus {
+    fn default() -> Self {
+        LockStatus::Locked
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(rename = "")]
+pub struct Route(pub usize, pub usize); // (dst, src)
+
+// Configuraton
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(rename = "")]
+pub struct Configuration {
+    #[serde(rename = "Take Mode")]
+    pub take_mode: bool,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[serde(rename = "")]
+pub struct EndPrelude;
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct HubInfo {
+    #[serde(rename = "PROTOCOL PREAMBLE")]
+    pub protocol_preamble: ProtocolPreamble,
+    #[serde(rename = "VIDEOHUB DEVICE")]
+    pub device_info: DeviceInfo,
+    #[serde(rename = "INPUT LABELS")]
+    pub input_labels: Vec<Label>,
+    #[serde(rename = "OUTPUT LABELS")]
+    pub output_labels: Vec<Label>,
+    #[serde(rename = "VIDEO OUTPUT LOCKS")]
+    pub video_output_locks: Vec<OutputLock>,
+    #[serde(rename = "VIDEO OUTPUT ROUTING")]
+    pub video_output_routing: Vec<Route>,
+    #[serde(rename = "CONFIGURATION")]
+    pub configuration: Configuration,
+    #[serde(rename = "END PRELUDE")]
+    end_prelude: EndPrelude,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum BlockType {
+    #[serde(rename(serialize = "PROTOCOL PREAMBLE:\n"))]
+    ProtocolPreamble(ProtocolPreamble),
+    #[serde(rename(serialize = "VIDEOHUB DEVICE:\n"))]
+    DeviceInfo(DeviceInfo),
+    #[serde(rename(serialize = "INPUT LABELS:\n"))]
+    InputLabels(Vec<Label>),
+    #[serde(rename(serialize = "OUTPUT LABELS:\n"))]
+    OutputLabels(Vec<Label>),
+    #[serde(rename(serialize = "VIDEO OUTPUT LOCKS:\n"))]
+    VideoOutputLocks(Vec<OutputLock>),
+    #[serde(rename(serialize = "VIDEO OUTPUT ROUTING:\n"))]
+    VideoOutputRouting(Vec<Route>),
+    #[serde(rename(serialize = "CONFIGURATION:\n"))]
+    Configuration(Configuration),
+    #[serde(rename(serialize = "END PRELUDE:\n"))]
+    EndPrelude(EndPrelude),
+}
+
+use std::{fmt::Display, str::FromStr};
+
+impl FromStr for Label {
+    type Err = self::error::Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "L" => Ok(LockStatus::Locked),
-            "O" => Ok(LockStatus::Owned),
-            "U" => Ok(LockStatus::Unlocked),
-            "F" => Ok(LockStatus::ForceUnlock),
-            _ => {
-                warn!("Invalid LockStatus string value {s}");
-                Err(error::Error::LockStatusError)
-            }
-        }
+        let mut chars = s.chars();
+        let index = chars
+            .by_ref()
+            .take_while(|&c| c != '=')
+            .collect::<String>()
+            .parse::<usize>()?;
+        let value: String = chars.collect();
+        Ok(Self(index, value))
+    }
+}
+
+impl FromStr for Route {
+    type Err = self::error::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut s_as_int = s.split('=').map(|word| word.parse::<usize>());
+        let a = s_as_int.next().unwrap()?;
+        let b = s_as_int.next().unwrap()?;
+        Ok(Self(a, b))
     }
 }
 
@@ -111,60 +180,4 @@ impl Display for LockStatus {
             write!(f, "{s}")
         }
     }
-}
-
-impl Default for LockStatus {
-    fn default() -> Self {
-        LockStatus::Locked
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct OutputLock {
-    pub id: usize,
-    pub lock_status: LockStatus,
-}
-
-pub type OutputLocks = Vec<OutputLock>;
-
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct Route {
-    pub source: usize,
-    pub destination: usize,
-}
-pub type OutputRoutings = Vec<Route>;
-
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct Configuration {
-    pub take_mode: bool,
-}
-
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct HubInfo {
-    pub protocol_preamble: ProtocolPreamble,
-    pub device_info: DeviceInfo,
-    pub input_labels: InputLabel,
-    pub output_labels: OutputLabel,
-    pub video_output_locks: OutputLocks,
-    pub video_output_routing: OutputRoutings,
-    pub configuration: Configuration,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum BlockType {
-    ProtocolPreamble,
-    DeviceInfo,
-    InputLabel,
-    OutputLabel,
-    VideoOutputLocks,
-    VideoOutputRouting,
-    Configuration,
-    EndPrelude,
-}
-
-pub enum WriteType<'a> {
-    VideoOutputRouting(OutputRoutings),
-    OutputLabel(&'a [Label]),
-    InputLabel(&'a [Label]),
-    VideoOutputLocks(&'a [OutputLock]),
 }
