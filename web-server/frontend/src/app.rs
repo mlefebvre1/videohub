@@ -11,7 +11,7 @@ pub struct Model {
     nb_output_ports: Option<usize>,
     friendly_name: Option<String>,
 }
-#[derive(Properties, PartialEq)]
+#[derive(Properties, PartialEq, Eq)]
 pub struct Props {
     pub ipv4_addr: Ipv4Addr,
 }

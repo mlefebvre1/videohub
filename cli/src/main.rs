@@ -1,8 +1,9 @@
-mod defs;
+mod cli;
 mod display;
 
-use defs::Cli;
+use cli::Cli;
 use display::{format_input_labels, format_output_labels};
+use futures::executor::block_on;
 use log::info;
 use std::{net::Ipv4Addr, str::FromStr};
 use tera::Tera;
@@ -16,38 +17,38 @@ use anyhow::Result;
 fn main() -> Result<()> {
     let args = Cli::get();
     simple_logger::SimpleLogger::new().env().init().unwrap();
+
     let ipv4_addr = Ipv4Addr::from_str(&args.ip_address)?;
 
     let videohub = Hub::new(ipv4_addr, DEFAULT_DEVICE_PORT);
 
     if let Some(Label(id, text)) = args.input_label {
         let block = BlockType::InputLabels(vec![Label(id, text.clone())]);
-
         info!("Changing label of input port {} to {}", id, text);
-        videohub.write(block)?;
+        block_on(videohub.write(block))?;
     }
     if let Some(Label(id, text)) = args.output_label {
         let block = BlockType::OutputLabels(vec![Label(id, text.clone())]);
         info!("Changing label of output port {} to {}", id, text);
-        videohub.write(block)?;
+        block_on(videohub.write(block))?;
     }
     if let Some(Route(dst, src)) = args.output_route {
         let block = BlockType::VideoOutputRouting(vec![Route(dst, src)]);
-
         info!("Routing -- Input={} to Output={}", src, dst);
-        videohub.write(block)?;
+        block_on(videohub.write(block))?;
     }
     if let Some(index) = args.unlock {
         let block = BlockType::VideoOutputLocks(vec![OutputLock(index, LockStatus::ForceUnlock)]);
-
-        videohub.write(block)?;
+        info!("Unlocking -- Output={index}");
+        block_on(videohub.write(block))?;
     }
     if let Some(index) = args.lock {
         let block = BlockType::VideoOutputLocks(vec![OutputLock(index, LockStatus::Locked)]);
-        videohub.write(block)?;
+        info!("Locking -- Output={index}");
+        block_on(videohub.write(block))?;
     }
     if args.display {
-        let hub_info = videohub.read()?;
+        let hub_info = block_on(videohub.read())?;
         display_hub_info(&hub_info).unwrap();
     }
 

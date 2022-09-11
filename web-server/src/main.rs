@@ -5,8 +5,12 @@ use rocket::fs::FileServer;
 use std::path::Path;
 
 mod api;
+mod defs;
 
-use api::{configuration_get, device_info_get, hub, input_ports_get, output_ports_get};
+use api::{
+    configuration_get, device_info_get, hub, input_ports_get, input_ports_put, output_ports_get,
+    output_ports_put,
+};
 
 #[launch]
 fn rocket() -> _ {
@@ -18,7 +22,9 @@ fn rocket() -> _ {
                 hub,
                 device_info_get,
                 input_ports_get,
+                input_ports_put,
                 output_ports_get,
+                output_ports_put,
                 configuration_get,
             ],
         )

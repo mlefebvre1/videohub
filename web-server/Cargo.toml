@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-videohub = { path = "../" }
+videohub = { path = "../", features = ["hub"] }
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -16,3 +16,8 @@ web-sys = { version = "0.3.58", features = [
   "console",
 ] }
 anyhow = "1"
+
+[features]
+default = ["defs"]
+defs = []
+api = []

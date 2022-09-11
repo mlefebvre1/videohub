@@ -6,6 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-std = "1"
+videohub = { path = "../../" }
+# videohub-rest = { path = "../" }
+serde = "1"
+# videohub-rest = { path = "../" }
 web-sys = { version = "0.3.58", features = [
   "CssStyleDeclaration",
   "HtmlElement",
@@ -14,7 +19,6 @@ web-sys = { version = "0.3.58", features = [
   "Request",
 ] }
 yew = { version = "0.19" }
-videohub = { path = "../../" }
 wasm-bindgen = "0.2"
 getrandom = { version = "0.2", features = ["js"] }
 gloo = "0.8"

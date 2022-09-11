@@ -1,8 +1,8 @@
-use std::io::{Read, Write};
+use futures::io::{AsyncReadExt, AsyncWriteExt};
 use std::net::Ipv4Addr;
 use std::net::SocketAddrV4;
 
-use std::net::TcpStream;
+use async_std::net::TcpStream;
 
 use crate::protocol;
 
@@ -35,12 +35,12 @@ impl Hub {
         Self { socket_addr }
     }
 
-    pub fn read(&self) -> Result<HubInfo> {
-        let mut stream = TcpStream::connect(&self.socket_addr)?;
+    pub async fn read(&self) -> Result<HubInfo> {
+        let mut stream = TcpStream::connect(&self.socket_addr).await?;
         let mut buffer = [0; 4096];
         let mut content = "".to_string();
         loop {
-            let nb_bytes = stream.read(&mut buffer)?;
+            let nb_bytes = stream.read(&mut buffer).await?;
             let partial_content = String::from_utf8(buffer[..nb_bytes].to_vec()).unwrap();
             content.push_str(&partial_content);
             if partial_content.contains("END PRELUDE") {
@@ -50,9 +50,9 @@ impl Hub {
         Ok(de::from_str(&content)?)
     }
 
-    pub fn write(&self, block: BlockType) -> Result<usize> {
+    pub async fn write(&self, block: BlockType) -> Result<usize> {
         let block = ser::to_string(&block)?;
-        let mut stream = TcpStream::connect(&self.socket_addr)?;
-        Ok(stream.write(block.as_bytes())?)
+        let mut stream = TcpStream::connect(&self.socket_addr).await?;
+        Ok(stream.write(block.as_bytes()).await?)
     }
 }
