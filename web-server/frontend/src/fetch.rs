@@ -13,10 +13,13 @@ pub struct OutputPort {
     #[serde(rename = "Port #")]
     pub id: usize,
     #[serde(rename = "Port Name")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
     #[serde(rename = "Port State")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub lock_state: Option<LockStatus>,
     #[serde(rename = "Source Port #")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub input_port: Option<usize>,
 }
 
