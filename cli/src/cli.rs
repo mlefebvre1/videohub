@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use videohub::protocol::{Label, Route};
+use videohub_proto::protocol::{Label, Route};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]

@@ -15,7 +15,10 @@ use api::{
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", FileServer::from(Path::new("frontend/dist/")))
+        .mount(
+            "/",
+            FileServer::from(Path::new("web-server/frontend/dist/")),
+        )
         .mount(
             "/hub",
             routes![

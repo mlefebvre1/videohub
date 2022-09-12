@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use videohub::protocol::LockStatus;
+use videohub_proto::protocol::LockStatus;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OutputPort {

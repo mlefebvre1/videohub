@@ -1,7 +1,7 @@
 use rocket::{response::status::BadRequest, serde::json::Json};
 use std::{net::Ipv4Addr, str::FromStr};
 
-use videohub::{
+use videohub_proto::{
     protocol::{BlockType, Configuration, DeviceInfo, HubInfo, Label, OutputLock, Route},
     Hub,
 };
@@ -149,6 +149,6 @@ fn get_hub() -> Hub {
     Hub::new(
         Ipv4Addr::from_str("10.26.135.201")
             .expect("Failed to create videohub, the ip address you provided is probably wrong."),
-        videohub::hub::DEFAULT_DEVICE_PORT,
+        videohub_proto::hub::DEFAULT_DEVICE_PORT,
     )
 }

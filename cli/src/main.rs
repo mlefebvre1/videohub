@@ -7,7 +7,7 @@ use futures::executor::block_on;
 use log::info;
 use std::{net::Ipv4Addr, str::FromStr};
 use tera::Tera;
-use videohub::{
+use videohub_proto::{
     protocol::{BlockType, HubInfo, Label, LockStatus, OutputLock, Route},
     Hub, DEFAULT_DEVICE_PORT,
 };
