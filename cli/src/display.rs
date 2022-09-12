@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use itertools::izip;
 use serde_json::value::{from_value, to_value, Value};
 use tera::{Error, Result};
-use videohub::protocol::{Label, OutputLock, Route};
+use videohub_proto::protocol::{Label, OutputLock, Route};
 
 pub fn format_input_labels(args: &HashMap<String, Value>) -> Result<Value> {
     let labels = match args.get("input_labels") {

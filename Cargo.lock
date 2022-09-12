@@ -2653,17 +2653,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
-name = "videohub"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "futures",
- "log",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "videohub-cli"
 version = "0.1.0"
 dependencies = [
@@ -2675,11 +2664,22 @@ dependencies = [
  "serde_json",
  "simple_logger",
  "tera",
- "videohub",
+ "videohub-proto",
 ]
 
 [[package]]
-name = "videohub-rest"
+name = "videohub-proto"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "futures",
+ "log",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "videohub-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2687,25 +2687,8 @@ dependencies = [
  "rocket",
  "serde",
  "serde_json",
- "videohub",
+ "videohub-proto",
  "web-sys",
-]
-
-[[package]]
-name = "videohub-web-client"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "getrandom",
- "gloo 0.8.0",
- "reqwest",
- "serde",
- "serde_json",
- "simple_logger",
- "videohub",
- "wasm-bindgen",
- "web-sys",
- "yew",
 ]
 
 [[package]]
@@ -2808,6 +2791,23 @@ name = "wasm-bindgen-shared"
 version = "0.2.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6598dd0bd3c7d51095ff6531a5b23e02acdc81804e30d8f07afb77b7215a140a"
+
+[[package]]
+name = "web-server-frontend"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "getrandom",
+ "gloo 0.8.0",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "simple_logger",
+ "videohub-proto",
+ "wasm-bindgen",
+ "web-sys",
+ "yew",
+]
 
 [[package]]
 name = "web-sys"

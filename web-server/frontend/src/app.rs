@@ -3,7 +3,7 @@ use std::net::Ipv4Addr;
 use super::fetch::fetch_device_info;
 use super::route;
 
-use videohub::protocol::DeviceInfo;
+use videohub_proto::protocol::DeviceInfo;
 use yew::prelude::*;
 
 pub struct Model {

@@ -1,12 +1,9 @@
 use super::{app, route};
 use reqwest::Client;
-use videohub::protocol::DeviceInfo;
+use videohub_proto::protocol::{DeviceInfo, LockStatus};
 use yew::prelude::*;
 
-// use videohub_rest::{InputPort, OutputPort};
-
 use serde::{Deserialize, Serialize};
-use videohub::protocol::LockStatus;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OutputPort {

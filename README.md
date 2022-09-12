@@ -26,7 +26,8 @@ $ cargo install wasm-bindgen-cli
 
 Build and package
 ```
-$ trunk build --release web/index.html
+$ trunk build --release web-sever/frontend/index.html
+cargo build --release
 ```
 
 
@@ -35,10 +36,10 @@ $ trunk build --release web/index.html
 #### For the CLI.
 
 ```
-$ cargo run --release --manifest-path "cli/Cargo.toml" -- <args>
+$ cargo run --release -p videohub-cli -- -h
 ```
 
-#### For the WEB Application (not ready)
+#### For the web-server
 ```
-$ trunk serve --release web/index.html
+$ cargo run --release -p videohub-server
 ```
