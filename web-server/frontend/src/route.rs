@@ -1,5 +1,5 @@
 use super::fetch::{fetch_input_ports, fetch_output_ports, InputPort, OutputPort};
-
+use reqwest::Client;
 // use videohub_rest::{InputPort, OutputPort};
 
 use gloo::timers::callback::Interval;
@@ -19,6 +19,7 @@ pub enum Msg {
     FetchOutputPorts(Vec<OutputPort>),
     FetchVideohubInfo,
     Route,
+    RouteDone,
 }
 
 pub struct Model {
@@ -92,7 +93,29 @@ impl Component for Model {
                 true
             }
             Msg::Route => {
-                // TODO ROUTE!
+                let body = serde_json::to_string(&vec![OutputPort {
+                    id: self.current_out_port_selected.unwrap(),
+                    input_port: self.current_in_port_selected,
+                    label: None,
+                    lock_state: None,
+                }])
+                .unwrap();
+
+                ctx.link().send_future(async {
+                    let client = Client::new();
+                    client
+                        .put("http://127.0.0.1:8000/hub/output_ports")
+                        .header(reqwest::header::CONTENT_TYPE, "application/json")
+                        .body(body)
+                        .send()
+                        .await
+                        .unwrap();
+                    Msg::RouteDone
+                });
+                true
+            }
+            Msg::RouteDone => {
+                ctx.link().send_message(Msg::FetchVideohubInfo);
                 self.current_in_port_selected = None;
                 self.current_out_port_selected = None;
                 self.set_default_input_buttons_colors(ctx);
@@ -113,18 +136,6 @@ impl Component for Model {
         let output_ports = match self.output_ports.clone() {
             Some(labels) => labels,
             None => vec![],
-        };
-
-        let input_port = if let Some(port) = self.current_in_port_selected {
-            format!("{port}")
-        } else {
-            "None".to_string()
-        };
-
-        let output_port = if let Some(port) = self.current_out_port_selected {
-            format!("{port}")
-        } else {
-            "None".to_string()
         };
 
         html! {
@@ -171,7 +182,7 @@ impl Model {
             let output_ports = self.output_ports.as_ref().unwrap();
             let output_ports_matched = output_ports
                 .iter()
-                .filter(|output_port| output_port.input_port.unwrap() == output_id);
+                .filter(|output_port| output_port.id == output_id);
             for output_port in output_ports_matched {
                 Self::set_button_color(
                     &format!("in_button_{}", output_port.input_port.unwrap()),
@@ -185,7 +196,7 @@ impl Model {
             let output_ports = self.output_ports.as_ref().unwrap();
             let output_ports_matched = output_ports
                 .iter()
-                .filter(|output_port| output_port.id == input_id);
+                .filter(|output_port| output_port.input_port.unwrap() == input_id);
             for output_port in output_ports_matched {
                 Self::set_button_color(
                     &format!("out_button_{}", output_port.id),
