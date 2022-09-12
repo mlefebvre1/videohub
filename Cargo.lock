@@ -2796,6 +2796,7 @@ checksum = "6598dd0bd3c7d51095ff6531a5b23e02acdc81804e30d8f07afb77b7215a140a"
 name = "web-server-frontend"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-std",
  "getrandom",
  "gloo 0.8.0",
