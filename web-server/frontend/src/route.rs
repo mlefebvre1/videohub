@@ -27,7 +27,6 @@ pub struct Model {
     current_out_port_selected: Option<usize>,
     input_ports: Option<Vec<InputPort>>,
     output_ports: Option<Vec<OutputPort>>,
-    req_str: Option<String>,
     _interval_handle: Interval,
 }
 
@@ -46,7 +45,7 @@ impl Component for Model {
 
         let fetch_videohub_info_interval_handle = {
             let link = ctx.link().clone();
-            Interval::new(1_000, move || link.send_message(Msg::FetchVideohubInfo))
+            Interval::new(3_000, move || link.send_message(Msg::FetchVideohubInfo))
         };
 
         Self {
@@ -54,7 +53,6 @@ impl Component for Model {
             current_out_port_selected: None,
             input_ports: None,
             output_ports: None,
-            req_str: None,
             _interval_handle: fetch_videohub_info_interval_handle,
         }
     }
@@ -103,8 +101,6 @@ impl Component for Model {
                 }])
                 .unwrap();
 
-                self.req_str = Some(body.clone());
-
                 ctx.link().send_future(async {
                     let client = Client::new();
                     client
@@ -119,6 +115,7 @@ impl Component for Model {
                 true
             }
             Msg::RouteDone => {
+                ctx.link().send_message(Msg::FetchVideohubInfo);
                 self.current_in_port_selected = None;
                 self.current_out_port_selected = None;
                 self.set_default_input_buttons_colors(ctx);
