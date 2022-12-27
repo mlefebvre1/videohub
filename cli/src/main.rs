@@ -1,6 +1,7 @@
 mod cli;
 mod display;
 
+use anyhow::Result;
 use cli::Cli;
 use display::{format_input_labels, format_output_labels};
 use futures::executor::block_on;
@@ -11,8 +12,6 @@ use videohub_proto::{
     protocol::{BlockType, HubInfo, Label, LockStatus, OutputLock, Route},
     Hub, DEFAULT_DEVICE_PORT,
 };
-
-use anyhow::Result;
 
 fn main() -> Result<()> {
     let args = Cli::get();

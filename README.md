@@ -5,41 +5,42 @@ CLI and WEB application for controlling the 'Smart Videohub' SDI router from Bla
 
 https://www.blackmagicdesign.com/products/smartvideohub
 
-### How to build
+### How to use (without docker)
+#### Get the latest stable rust version
 ```
-$ cargo build --release --workspace
+$ rustup default stable
+$ rustup update
 ```
-
-#### For the WEB Application, build and package using trunk.
-
-
-Install WASM Target
+#### (Optional) Install rust tools if you are using the web-server
 ```
 $ rustup target add wasm32-unknown-unknown
+$ cargo install trunk wasm-bindgen-cli
+```
+#### Build the workspace
+```
+$ cargo build
 ```
 
-Install Trunk
+#### Build the frontend (if using the web-server)
 ```
-$ cargo install --locked trunk
-$ cargo install wasm-bindgen-cli
-```
-
-Build and package
-```
-$ trunk build --release web-sever/frontend/index.html
-cargo build --release
+$ trunk build web-server/frontend/index.html
 ```
 
-
-### How to run
-
-#### For the CLI.
-
+#### Run the CLI
 ```
-$ cargo run --release -p videohub-cli -- -h
+$ cargo run -p videohub-cli -- -h
 ```
-
-#### For the web-server
+#### Run the web-server
 ```
-$ cargo run --release -p videohub-server
+cargo run -p videohub-server
+```
+---
+### How to use with docker (web-server only)
+#### Build the base docker image
+```
+$ docker-compose build base
+```
+#### Start the service for router
+```
+$ docker-compose up web-router
 ```

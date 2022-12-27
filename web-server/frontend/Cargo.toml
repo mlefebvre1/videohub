@@ -1,13 +1,12 @@
 [package]
-name = "web-server-frontend"
+name = "videohub-server-frontend"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std = "1"
-videohub-proto = { path = "../../proto" }
+videohub-server-api-def = { path = "../api-def" }
 serde = "1"
 serde_json = "1"
 web-sys = { version = "0.3.58", features = [
@@ -21,6 +20,6 @@ yew = { version = "0.19" }
 wasm-bindgen = "0.2"
 getrandom = { version = "0.2", features = ["js"] }
 gloo = "0.8"
-simple_logger = "2.2"
 reqwest = { version = "0.11", features = ["json"] }
 anyhow = "1"
+lazy_static = "1"

@@ -1,2 +1,8 @@
 [workspace]
-members = ["proto", "cli/", "web-server/", "web-server/frontend"]
+members = [
+  "proto/",
+  "cli/",
+  "web-server/",
+  "web-server/frontend/",
+  "web-server/api-def/",
+]

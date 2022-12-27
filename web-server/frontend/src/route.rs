@@ -1,9 +1,10 @@
-use super::fetch::{fetch_input_ports, fetch_output_ports, InputPort, OutputPort};
-use reqwest::Client;
-// use videohub_rest::{InputPort, OutputPort};
-
+use super::{
+    config::HOST_ADDRESS,
+    fetch::{fetch_input_ports, fetch_output_ports},
+};
 use gloo::timers::callback::Interval;
-
+use reqwest::Client;
+use videohub_server_api_def::defs::{InputPort, OutputPort};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use yew::prelude::*;
 
@@ -61,22 +62,12 @@ impl Component for Model {
         match msg {
             Msg::InPortClicked(i) => {
                 self.current_in_port_selected = Some(i);
-                self.set_default_output_buttons_colors(ctx);
-                self.set_default_input_buttons_colors(ctx);
-                self.set_input_routed_to_output_color(ctx);
-                self.set_output_routed_to_input_color(ctx);
-                self.set_focused_input_button_color(ctx);
-                self.set_focused_output_button_color(ctx);
+                self.update_button_colors(ctx);
                 true
             }
             Msg::OutPortClicked(i) => {
                 self.current_out_port_selected = Some(i);
-                self.set_default_output_buttons_colors(ctx);
-                self.set_default_input_buttons_colors(ctx);
-                self.set_input_routed_to_output_color(ctx);
-                self.set_output_routed_to_input_color(ctx);
-                self.set_focused_input_button_color(ctx);
-                self.set_focused_output_button_color(ctx);
+                self.update_button_colors(ctx);
                 true
             }
             Msg::FetchInputPorts(input_ports) => {
@@ -104,7 +95,7 @@ impl Component for Model {
                 ctx.link().send_future(async {
                     let client = Client::new();
                     client
-                        .put("http://127.0.0.1:8000/hub/output_ports")
+                        .put(format!("http://{}/hub/output_ports", *HOST_ADDRESS))
                         .header(reqwest::header::CONTENT_TYPE, "application/json")
                         .body(body)
                         .send()
@@ -144,8 +135,8 @@ impl Component for Model {
                     <h1 style={"text-align: center"}>{"Input Ports"}</h1>
                     {
                         html!{
-                            for input_ports.into_iter().map(|input_port| html!(<button id={format!("in_button_{}", input_port.id)}
-                             onclick={link.callback(move |_| Msg::InPortClicked(input_port.id))} >{format!("IN{}\n{}", input_port.id, input_port.label)}</button>))
+                                for input_ports.into_iter().map(|input_port| html!(<button type="button" id={format!("in_button_{}", input_port.id)}
+                                 onclick={link.callback(move |_| Msg::InPortClicked(input_port.id))} >{format!("IN{}", input_port.id)}<br/>{input_port.label.to_string()}</button>))
                         }
                     }
                 </div>
@@ -153,8 +144,8 @@ impl Component for Model {
                     <h1 style={"text-align: center"}>{"Output Ports"}</h1>
                     {
                         html!{
-                            for output_ports.into_iter().map(|output_port| html!(<button id={format!("out_button_{}", output_port.id)}
-                             onclick={link.callback(move |_| Msg::OutPortClicked(output_port.id))} >{format!("OUT{}\n{}", output_port.id, output_port.label.unwrap())}</button>))
+                            for output_ports.into_iter().map(|output_port| html!(<button type="button" id={format!("out_button_{}", output_port.id)}
+                             onclick={link.callback(move |_| Msg::OutPortClicked(output_port.id))} >{format!("OUT{}", output_port.id)}<br/>{output_port.label.unwrap().to_string()}</button>))
                         }
                     }
                 </div>
@@ -167,6 +158,15 @@ impl Component for Model {
 }
 
 impl Model {
+    fn update_button_colors(&self, ctx: &Context<Self>) {
+        self.set_default_output_buttons_colors(ctx);
+        self.set_default_input_buttons_colors(ctx);
+        self.set_input_routed_to_output_color(ctx);
+        self.set_output_routed_to_input_color(ctx);
+        self.set_focused_input_button_color(ctx);
+        self.set_focused_output_button_color(ctx);
+    }
+
     fn set_default_input_buttons_colors(&self, ctx: &Context<Self>) {
         Self::set_default_buttons_colors("in_button_", ctx.props().nb_input_ports);
     }

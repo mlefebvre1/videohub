@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use itertools::izip;
 use serde_json::value::{from_value, to_value, Value};
+use std::collections::HashMap;
 use tera::{Error, Result};
 use videohub_proto::protocol::{Label, OutputLock, Route};
 

@@ -1,13 +1,9 @@
+use super::protocol::{de, ser, BlockType, HubInfo};
+use crate::protocol;
+use async_std::net::TcpStream;
 use futures::io::{AsyncReadExt, AsyncWriteExt};
 use std::net::Ipv4Addr;
 use std::net::SocketAddrV4;
-
-use async_std::net::TcpStream;
-
-use crate::protocol;
-
-use super::protocol::{de, ser, BlockType, HubInfo};
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]

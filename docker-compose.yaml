@@ -1,0 +1,22 @@
+version: "3.7"
+
+x-common-setup: &common-setup
+  image: videohub_web_server
+  build:
+    context: .
+    dockerfile: Dockerfile
+  volumes:
+    - .:/app/
+  command: bash serve.sh
+
+services:
+  base:
+    <<: *common-setup
+
+  web-router:
+    ports:
+      - "8001:8001"
+    environment:
+      - ROCKET_PORT=8001
+      - ROCKET_ADDRESS=0.0.0.0
+    <<: *common-setup

@@ -1,0 +1,9 @@
+[package]
+name = "videohub-server-api-def"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+videohub-proto = { path = "../../proto" }
+serde = { version = "1", features = ["derive"] }
+schemars = "0.8.10"
