@@ -1,9 +1,9 @@
-use std::ops::{AddAssign, MulAssign};
-
-use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
-use serde::{forward_to_deserialize_any, Deserialize};
-
 use super::error::{Error, Result};
+use serde::{
+    de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor},
+    forward_to_deserialize_any, Deserialize,
+};
+use std::ops::{AddAssign, MulAssign};
 
 pub struct Deserializer<'de> {
     input: &'de str,

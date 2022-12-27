@@ -1,19 +1,11 @@
-use std::net::Ipv4Addr;
-
-use super::fetch::fetch_device_info;
-use super::route;
-
-use videohub_proto::protocol::DeviceInfo;
+use super::{fetch::fetch_device_info, route};
+use videohub_server_api_def::defs::DeviceInfo;
 use yew::prelude::*;
 
 pub struct Model {
     nb_input_ports: Option<usize>,
     nb_output_ports: Option<usize>,
     friendly_name: Option<String>,
-}
-#[derive(Properties, PartialEq, Eq)]
-pub struct Props {
-    pub ipv4_addr: Ipv4Addr,
 }
 
 pub enum Msg {
@@ -22,7 +14,7 @@ pub enum Msg {
 
 impl Component for Model {
     type Message = Msg;
-    type Properties = Props;
+    type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
         fetch_device_info(ctx);
@@ -47,12 +39,9 @@ impl Component for Model {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <>
-                <p>{format!("Friendly Name: {}", self.friendly_name.as_ref().unwrap())}</p>
-                <p>{format!("NB INPUT PORTS : {}", self.nb_input_ports.unwrap())}</p>
-                <p>{format!("NB OUTPUT PORTS : {}", self.nb_output_ports.unwrap())}</p>
                 <header style={"color: white; background: rgb(155, 28, 30)"}>
                     <h1>{"Videohub"}</h1>
-                    <h3>{"SDI Router"}</h3>
+                    <p>{format!("Friendly Name: {}", self.friendly_name.as_ref().unwrap())}</p>
                 </header>
                 <div>
                     <route::Model nb_input_ports={self.nb_input_ports.unwrap()} nb_output_ports={self.nb_output_ports.unwrap()}/>

@@ -1,5 +1,4 @@
 use clap::Parser;
-
 use videohub_proto::protocol::{Label, Route};
 
 #[derive(Parser)]

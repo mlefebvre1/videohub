@@ -1,6 +1,5 @@
-use serde::{ser, Serialize};
-
 use super::error::{Error, Result};
+use serde::{ser, Serialize};
 
 pub struct Serializer {
     output: String,
